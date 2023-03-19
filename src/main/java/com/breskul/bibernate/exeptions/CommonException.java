@@ -13,7 +13,7 @@ public abstract class CommonException extends RuntimeException {
         super(String.format(PATTERN, cause, suggestedSolution));
     }
 
-    protected CommonException(String cause, String suggestedSolution, Exception e) {
+    protected CommonException(String cause, String suggestedSolution, Throwable e) {
         super(String.format(PATTERN, cause, suggestedSolution), e);
     }
 }
