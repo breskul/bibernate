@@ -1,11 +1,13 @@
 package com.breskul.bibernate.configuration;
 
+import com.breskul.bibernate.exeptions.PersistencePropertiesException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
 public class PersistenceProperties {
-    private final String PROPERTIES_FILE = "persistence.properties";
+    private static final String PROPERTIES_FILE = "persistence.properties";
 
     private Properties properties;
 
@@ -27,17 +29,17 @@ public class PersistenceProperties {
             properties = new Properties();
 
             if (input == null) {
-                throw new RuntimeException("Unable to find persistence.properties");
+                throw new PersistencePropertiesException("Unable to find 'persistence.properties' file");
             }
 
             properties.load(input);
 
         } catch (IOException e) {
-            throw new RuntimeException("Unable to load persistence.properties", e);
+            throw new PersistencePropertiesException("Unable to load 'persistence.properties' file", e);
         }
     }
 
-    public String getProperty(String name){
+    public String getProperty(String name) {
         return properties.getProperty(name);
     }
 }
