@@ -13,7 +13,7 @@ public class PersistencePropertiesException extends CommonException {
         super(cause, CANT_FIND_SUGGESTION);
     }
 
-    public PersistencePropertiesException(String cause, Exception e) {
+    public PersistencePropertiesException(String cause, Throwable e) {
         super(cause, CANT_LOAD_SUGGESTION, e);
     }
 }
