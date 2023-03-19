@@ -9,6 +9,10 @@ public abstract class CommonException extends RuntimeException {
 
     public static final String PATTERN = "%s - %s";
 
+    protected CommonException(String cause, String suggestedSolution) {
+        super(String.format(PATTERN, cause, suggestedSolution));
+    }
+
     protected CommonException(String cause, String suggestedSolution, Exception e) {
         super(String.format(PATTERN, cause, suggestedSolution), e);
     }
