@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+/**
+ * Configuration class for load and store configuration properties from the classpath
+ */
 public class PersistenceProperties {
     private static final String PROPERTIES_FILE = "persistence.properties";
 
@@ -39,6 +42,12 @@ public class PersistenceProperties {
         }
     }
 
+    /**
+     * Return configuration property value by property key
+     *
+     * @param name property key
+     * @return property value
+     */
     public String getProperty(String name) {
         return properties.getProperty(name);
     }

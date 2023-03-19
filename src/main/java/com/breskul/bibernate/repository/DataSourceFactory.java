@@ -5,6 +5,9 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import javax.sql.DataSource;
 
+/**
+ * Class that produces the pooled hikari datasource
+ */
 public class DataSourceFactory {
     private final DataSource dataSource;
 
@@ -21,6 +24,11 @@ public class DataSourceFactory {
         dataSource = configureDataSource();
     }
 
+    /**
+     * The method that return configured datasource
+     *
+     * @return datasource
+     */
     public DataSource getDataSource() {
         return dataSource;
     }
