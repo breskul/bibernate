@@ -1,5 +1,6 @@
 package com.breskul.bibernate;
 
+import com.breskul.bibernate.configuration.PersistenceProperties;
 import com.breskul.bibernate.repository.DataSourceFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -13,6 +14,7 @@ public abstract class AbstractDataSourceTest {
 
     @BeforeAll
     protected void init() {
+        PersistenceProperties.initialize();
         DataSourceFactory dataSourceFactory = DataSourceFactory.getInstance();
         dataSource = dataSourceFactory.getDataSource();
     }

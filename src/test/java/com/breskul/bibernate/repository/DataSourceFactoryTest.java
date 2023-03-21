@@ -1,5 +1,7 @@
 package com.breskul.bibernate.repository;
 
+import com.breskul.bibernate.configuration.PersistenceProperties;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
@@ -8,6 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class DataSourceFactoryTest {
+
+    @BeforeEach
+    public void init(){
+        PersistenceProperties.initialize();
+    }
 
     @Test
     public void createDataSourceFactory() {
