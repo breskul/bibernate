@@ -1,5 +1,6 @@
 package com.breskul.bibernate.configuration;
 
+import com.breskul.bibernate.exeptions.InitializePersistencePropertiesException;
 import com.breskul.bibernate.exeptions.PersistencePropertiesException;
 
 import java.io.IOException;
@@ -10,7 +11,7 @@ import java.util.Properties;
  * Configuration class for load and store configuration properties from the classpath
  */
 public class PersistenceProperties {
-    private static final String PROPERTIES_FILE = "persistence.properties";
+    private static final String DEFAULT_PROPERTIES_FILE = "persistence.properties";
 
     private Properties properties;
 
@@ -18,27 +19,44 @@ public class PersistenceProperties {
 
     public static synchronized PersistenceProperties getInstance() {
         if (instance == null) {
-            instance = new PersistenceProperties();
+            throw new InitializePersistencePropertiesException();
         }
         return instance;
     }
 
-    private PersistenceProperties() {
-        loadProperties();
+    private PersistenceProperties(String propertiesFile) {
+        loadProperties(propertiesFile);
     }
 
-    private void loadProperties() {
-        try (InputStream input = this.getClass().getClassLoader().getResourceAsStream(PROPERTIES_FILE)) {
+    /**
+     * Initialize PersistenceProperties with default 'persistence.properties' properties file
+     */
+    public static void initialize(){
+        initialize(DEFAULT_PROPERTIES_FILE);
+    }
+
+    /**
+     * Initialize PersistenceProperties with default properties file
+     * @param propertiesFile custom properties file name
+     */
+    public static synchronized void initialize(String propertiesFile){
+        if (instance == null) {
+            instance = new PersistenceProperties(propertiesFile);
+        }
+    }
+
+    private void loadProperties(String propertiesFile) {
+        try (InputStream input = this.getClass().getClassLoader().getResourceAsStream(propertiesFile)) {
             properties = new Properties();
 
             if (input == null) {
-                throw new PersistencePropertiesException("Unable to find 'persistence.properties' file");
+                throw new PersistencePropertiesException(propertiesFile);
             }
 
             properties.load(input);
 
         } catch (IOException e) {
-            throw new PersistencePropertiesException("Unable to load 'persistence.properties' file", e);
+            throw new PersistencePropertiesException(propertiesFile, e);
         }
     }
 
