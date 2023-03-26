@@ -24,7 +24,7 @@ public class DaoUtilsTest {
 
     @Test
     @Order(3)
-    @DisplayName("2. Test getIdentifierValue method")
+    @DisplayName("3. Test getIdentifierValue method")
     public void testGetIdentifierValue() {
         Note note = new Note();
         note.setId(1L);
