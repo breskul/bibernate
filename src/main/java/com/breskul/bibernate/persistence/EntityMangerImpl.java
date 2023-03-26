@@ -1,5 +1,6 @@
 package com.breskul.bibernate.persistence;
 
+import com.breskul.bibernate.persistence.util.DaoUtils;
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaDelete;
@@ -7,10 +8,17 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.CriteriaUpdate;
 import jakarta.persistence.metamodel.Metamodel;
 
+import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
 
 public class EntityMangerImpl implements EntityManager {
+    private final JdbcDao jdbcDao;
+
+    public EntityMangerImpl(DataSource dataSource) {
+        this.jdbcDao = new JdbcDao(dataSource);
+    }
+
     @Override
     public void persist(Object entity) {
 
@@ -23,7 +31,10 @@ public class EntityMangerImpl implements EntityManager {
 
     @Override
     public void remove(Object entity) {
-
+        String tableName = DaoUtils.getClassTableName(entity.getClass());
+        String identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
+        Object identifierValue = DaoUtils.getIdentifierValue(entity);
+        this.jdbcDao.deleteByIdentifier(tableName, identifierName, identifierValue);
     }
 
     @Override
