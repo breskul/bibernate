@@ -1,8 +1,8 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.exeptions.JdbcDaoException;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -10,7 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class JdbcDao {
-    private static final Logger logger = LogManager.getLogger(JdbcDao.class);
+    private static final Logger logger = LoggerFactory.getLogger(JdbcDao.class);
     private final DataSource dataSource;
     private final String DELETE_STATEMENT = "DELETE FROM %s WHERE %s = ?";
 
@@ -25,7 +25,7 @@ public class JdbcDao {
         try (Connection connection = dataSource.getConnection()) {
             PreparedStatement preparedStatement = connection.prepareStatement(formattedDeleteStatement);
             preparedStatement.setObject(1, identifier);
-            logger.info(preparedStatement);
+            logger.info(preparedStatement.toString());
             int rowDeleted = preparedStatement.executeUpdate();
             if (rowDeleted == 0){
                 throw new JdbcDaoException(cause, solution);
