@@ -25,7 +25,7 @@ public class JdbcDao {
         try (Connection connection = dataSource.getConnection()) {
             PreparedStatement preparedStatement = connection.prepareStatement(formattedDeleteStatement);
             preparedStatement.setObject(1, identifier);
-            logger.info(preparedStatement.toString());
+            logger.info("SQL:" + preparedStatement);
             int rowDeleted = preparedStatement.executeUpdate();
             if (rowDeleted == 0){
                 throw new JdbcDaoException(cause, solution);
