@@ -1,4 +1,4 @@
-package com.breskul.bibernate.exeptions;
+package com.breskul.bibernate.exception;
 
 /**
  * Throws when the 'persistence.properties' file is not found or can't be loaded

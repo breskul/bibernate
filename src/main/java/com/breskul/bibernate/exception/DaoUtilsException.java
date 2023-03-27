@@ -1,4 +1,4 @@
-package com.breskul.bibernate.exeptions;
+package com.breskul.bibernate.exception;
 
 public class DaoUtilsException extends CommonException{
 

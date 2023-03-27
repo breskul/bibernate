@@ -1,8 +1,8 @@
 package com.breskul.bibernate.persistence.util.testModel;
 
-import com.breskul.bibernate.annotations.Column;
-import com.breskul.bibernate.annotations.Id;
-import com.breskul.bibernate.annotations.Table;
+import com.breskul.bibernate.annotation.Column;
+import com.breskul.bibernate.annotation.Id;
+import com.breskul.bibernate.annotation.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
