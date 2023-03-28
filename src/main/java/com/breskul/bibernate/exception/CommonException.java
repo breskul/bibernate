@@ -1,4 +1,4 @@
-package com.breskul.bibernate.exeptions;
+package com.breskul.bibernate.exception;
 
 /**
  * Common exception class<br> Extends the {@link RuntimeException}<br> Each exception class in the

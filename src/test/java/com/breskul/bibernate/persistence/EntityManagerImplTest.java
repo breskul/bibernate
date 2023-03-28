@@ -1,34 +1,33 @@
 package com.breskul.bibernate.persistence;
 
-import com.breskul.bibernate.configuration.PersistenceProperties;
-import com.breskul.bibernate.exeptions.JdbcDaoException;
-import com.breskul.bibernate.persistence.testModel.Person;
-import com.breskul.bibernate.repository.DataSourceFactory;
+import com.breskul.bibernate.AbstractDataSourceTest;
+import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.persistence.testmodel.Person;
 import jakarta.persistence.EntityManager;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.ClassOrderer;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.function.Consumer;
 
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
-public class EntityManagerImplTest {
+public class EntityManagerImplTest extends AbstractDataSourceTest {
 
-    private static final String NEW_PERSON_QUERY = "insert into users (id, first_name, last_name) values (1, 'Cat', 'Schrödinger')";
-    private static DataSource dataSource;
+    private static final String NEW_PERSON_QUERY = "insert into users (id, first_name, last_name) values (10, 'Cat', 'Schrödinger')";
 
     @Test
     @Order(1)
     @DisplayName("1. Test remove method")
     public void testRemoveMethod() {
-        PersistenceProperties.initialize();
-        DataSourceFactory dataSourceFactory = DataSourceFactory.getInstance();
-        dataSource = dataSourceFactory.getDataSource();
-        EntityManager entityManager = new EntityMangerImpl(dataSource);
+        EntityManager entityManager = new EntityManagerImpl(dataSource);
         Person person = new Person();
-        person.setId(1L);
+        person.setId(10L);
         person.setFirstName("user");
         Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.remove(person));
 
@@ -45,7 +44,7 @@ public class EntityManagerImplTest {
         entityManager.close();
     }
 
-    private static void doInConnection(Consumer<Connection> consumer) {
+    private void doInConnection(Consumer<Connection> consumer) {
         try (Connection connection = dataSource.getConnection()) {
             consumer.accept(connection);
         } catch (SQLException e) {

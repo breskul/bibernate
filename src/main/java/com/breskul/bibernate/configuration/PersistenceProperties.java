@@ -1,7 +1,7 @@
 package com.breskul.bibernate.configuration;
 
-import com.breskul.bibernate.exeptions.InitializePersistencePropertiesException;
-import com.breskul.bibernate.exeptions.PersistencePropertiesException;
+import com.breskul.bibernate.exception.InitializePersistencePropertiesException;
+import com.breskul.bibernate.exception.PersistencePropertiesException;
 
 import java.io.IOException;
 import java.io.InputStream;

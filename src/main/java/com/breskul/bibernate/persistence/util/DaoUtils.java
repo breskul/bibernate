@@ -1,16 +1,25 @@
 package com.breskul.bibernate.persistence.util;
 
-import com.breskul.bibernate.annotations.Id;
-import com.breskul.bibernate.annotations.Table;
-import com.breskul.bibernate.exeptions.DaoUtilsException;
+import com.breskul.bibernate.annotation.Column;
+import com.breskul.bibernate.annotation.Entity;
+import com.breskul.bibernate.annotation.Id;
+import com.breskul.bibernate.annotation.ManyToOne;
+import com.breskul.bibernate.annotation.OneToMany;
+import com.breskul.bibernate.annotation.Table;
+import com.breskul.bibernate.exception.DaoUtilsException;
+import com.breskul.bibernate.exception.InternalException;
+import com.breskul.bibernate.exception.JdbcDaoException;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Optional;
 
 public class DaoUtils {
+    private DaoUtils() {
+    }
 
-    public static Field getIdentifierField(Class<?> entityClass){
+    public static Field getIdentifierField(Class<?> entityClass) {
         var cause = "entity is not marked with Id annotation";
         var solution = "mark id column with Id annotation";
         return Arrays.stream(entityClass.getDeclaredFields())
@@ -18,6 +27,7 @@ public class DaoUtils {
                 .findAny()
                 .orElseThrow(() -> new DaoUtilsException(cause, solution));
     }
+
     public static String getIdentifierFieldName(Class<?> entityClass) {
         Field field = getIdentifierField(entityClass);
         return field.getName();
@@ -42,4 +52,55 @@ public class DaoUtils {
                 .orElse(entityClass.getSimpleName());
 
     }
+
+    public static <T> void isValidEntity(Class<T> type) {
+        if (type.isAnnotationPresent(Entity.class)) {
+            long idAnnotationCount = Arrays.stream(type.getDeclaredFields()).filter(field -> field.isAnnotationPresent(Id.class)).count();
+            if (idAnnotationCount > 1) {
+                throw new JdbcDaoException("There are more than one @Id annotation for %s".formatted(type.getName()), "Make sure that only one @Id annotation present");
+            } else if (idAnnotationCount == 0) {
+                throw new JdbcDaoException("There is no @Id annotation for %s".formatted(type.getName()), "Make sure that only one @Id annotation present");
+            }
+        } else {
+            throw new JdbcDaoException("%s is not a valid entity class".formatted(type.getName()), "@Entity annotation should be present");
+        }
+    }
+
+    public static String resolveFieldName(Field field) {
+        if (field.isAnnotationPresent(Column.class)) {
+            String fieldName = field.getAnnotation(Column.class).name();
+            if (fieldName != null && !fieldName.isEmpty()) {
+                return fieldName;
+            }
+        }
+
+        return field.getName();
+    }
+
+    public static Object getFieldValue(Object object, Field idField) {
+        try {
+            Field declaredField = object.getClass().getDeclaredField(idField.getName());
+            declaredField.setAccessible(true);
+            return declaredField.get(object);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            throw new InternalException("Can't get field %s".formatted(idField.getName()), "", e);
+        }
+    }
+
+    public static Field getFieldByAnnotation(Class<?> object, Class<? extends Annotation> annotation) {
+        return Arrays.stream(object.getDeclaredFields()).filter(field -> field.isAnnotationPresent(annotation)).findAny().orElseThrow(() -> new RuntimeException(annotation.getName() + " is not present"));
+    }
+
+    public static boolean isRegularField(Field field) {
+        return !isEntityField(field) && !isEntityCollectionField(field);
+    }
+
+    public static boolean isEntityField(Field field) {
+        return field.isAnnotationPresent(ManyToOne.class);
+    }
+
+    public static boolean isEntityCollectionField(Field field) {
+        return field.isAnnotationPresent(OneToMany.class);
+    }
+
 }
