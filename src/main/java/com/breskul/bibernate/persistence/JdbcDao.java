@@ -3,27 +3,32 @@ package com.breskul.bibernate.persistence;
 import com.breskul.bibernate.annotation.GeneratedValue;
 import com.breskul.bibernate.annotation.Strategy;
 import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.exception.ReflectionException;
+import com.breskul.bibernate.persistence.util.DaoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.breskul.bibernate.persistence.util.DaoUtils.getClassTableName;
-import static com.breskul.bibernate.persistence.util.DaoUtils.getFieldValue;
-import static com.breskul.bibernate.persistence.util.DaoUtils.isValidEntity;
+import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
 public class JdbcDao {
+
     private static final Logger logger = LoggerFactory.getLogger(JdbcDao.class);
+    private static final String CHECK_YOUR_SQL_QUERY = "check your sql query";
+    private static final String CAUSE_SQL_EXCEPTION_PATTERN = "error occurred while executing 'SELECT BY %s' statement";
     private final DataSource dataSource;
+    private final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
     private static final String DELETE_STATEMENT = "DELETE FROM %s WHERE %s = ?";
     private static final String INSERT_QUERY = "INSERT INTO %s (%s) VALUES (%s)";
     private static final String SELECT_SEQ_QUERY = "SELECT nextval('%s_seq')";
@@ -45,25 +50,63 @@ public class JdbcDao {
             resultSet.next();
             return resultSet.getObject(1);
         } catch (SQLException e) {
-            throw new JdbcDaoException("Can't find sequence %s".formatted(sequenceTable), "Make sure that sequence match the pattern 'tableName_seq'", e);
+            throw new JdbcDaoException("Can't find sequence %s".formatted(sequenceTable),
+                    "Make sure that sequence match the pattern 'tableName_seq'", e);
         }
     }
 
-    public void deleteByIdentifier(String tableName, String identifierName, Object identifier) {
-        String formattedDeleteStatement = String.format(DELETE_STATEMENT, tableName, identifierName);
-        var cause = "error occurred while executing delete statement";
-        var solution = "check your sql query";
-        try (Connection connection = dataSource.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement(formattedDeleteStatement);
-            preparedStatement.setObject(1, identifier);
-            logger.info("SQL:" + preparedStatement);
-            int rowDeleted = preparedStatement.executeUpdate();
-            if (rowDeleted == 0) {
-                throw new JdbcDaoException(cause, solution);
-            }
-        } catch (SQLException e) {
-            throw new JdbcDaoException(cause, solution, e);
+    public <T> T findByIdentifier(Class<T> entityType, String tableName, Object identifier) {
+        Field idField = DaoUtils.getIdentifierField(entityType);
+        return findOneBy(entityType, tableName, idField, identifier);
+    }
+
+    public <T> List<T> findAllBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
+        final var alias = tableName.substring(0, 1).toLowerCase();
+        var columnName = DaoUtils.getColumnName(field);
+        String formattedDeleteStatement =
+                String.format(SELECT_FROM_TABLE_BY_COLUMN_STATEMENT, alias, tableName, alias, alias, columnName);
+        final var cause = String.format(CAUSE_SQL_EXCEPTION_PATTERN, columnName);
+        var list = new ArrayList<T>();
+        performStatement(
+                connection -> {
+                    PreparedStatement preparedStatement = connection.prepareStatement(
+                            formattedDeleteStatement);
+                    preparedStatement.setObject(1, columnValue);
+                    logger.info("SQL: {}", preparedStatement);
+                    ResultSet resultSet = preparedStatement.executeQuery();
+                    while (resultSet.next()) {
+                        var entity = createEntityFromResultSet(entityType, resultSet);
+                        list.add(entity);
+                    }
+                },
+                cause
+        );
+        return list;
+    }
+
+    public <T> T findOneBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
+        List<T> resultList = findAllBy(entityType, tableName, field, columnValue);
+        if (resultList.size() != 1) {
+            throw new JdbcDaoException("The result must contain exactly one row", CHECK_YOUR_SQL_QUERY);
         }
+        return resultList.get(0);
+    }
+
+    public void deleteByIdentifier(String tableName, String identifierName, Object identifier) {
+        final var cause = String.format(CAUSE_SQL_EXCEPTION_PATTERN, "delete");
+        performStatement(
+                connection -> {
+                    String formattedDeleteStatement = String.format(DELETE_STATEMENT, tableName, identifierName);
+                    PreparedStatement preparedStatement = connection.prepareStatement(formattedDeleteStatement);
+                    preparedStatement.setObject(1, identifier);
+                    logger.info("SQL: {}", preparedStatement);
+                    int rowDeleted = preparedStatement.executeUpdate();
+                    if (rowDeleted == 0) {
+                        throw new JdbcDaoException(cause, CHECK_YOUR_SQL_QUERY);
+                    }
+                },
+                cause
+        );
     }
 
     public void executeInsert(Object entityToSave, List<Object> values, List<String> columns) {
@@ -120,5 +163,90 @@ public class JdbcDao {
                 preparedStatement.setObject(i + 1, values.get(i), java.sql.Types.OTHER);
             }
         }
+    }
+
+    public <T> T createEntityFromResultSet(Class<T> entityType, ResultSet resultSet) throws SQLException {
+        T entity = null;
+        try {
+            Constructor<T> constructor = entityType.getConstructor();
+            entity = constructor.newInstance();
+            for (var field : entityType.getDeclaredFields()) {
+                field.setAccessible(true);
+                if (DaoUtils.isRegularField(field)) {
+                    logger.debug("Setting regular column field");
+                    var columnName = DaoUtils.getColumnName(field);
+                    Object columnValue = resultSet.getObject(columnName);
+                    if (columnValue instanceof Timestamp tms) {
+                        Class<?> fieldType = field.getType();
+                        if (fieldType == LocalDateTime.class) {
+                            field.set(entity, tms.toLocalDateTime());
+                        } else if (fieldType == LocalDate.class) {
+                            field.set(entity, tms.toLocalDateTime().toLocalDate());
+                        }
+                    } else {
+                        field.set(entity, columnValue);
+                    }
+                } else if (isEntityField(field)) {
+                    logger.debug("Setting toOne related entity");
+                    var relatedEntityType = field.getType();
+                    var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
+                    var relatedEntityIdField = DaoUtils.getIdentifierField(relatedEntityType);
+                    var joinColumnName = DaoUtils.resolveFieldName(field);
+                    var joinColumnValue = resultSet.getObject(joinColumnName);
+                    var relatedEntity = findByIdentifier(relatedEntityType, relatedEntityTableName, joinColumnValue);
+//                    var relatedEntity = findOneBy(relatedEntityType, relatedEntityTableName, relatedEntityIdField, joinColumnValue);
+                    field.set(entity, relatedEntity);
+                } else if (isEntityCollectionField(field)) {
+                    logger.debug("Setting lazy list for toMany related entities");
+                }
+            }
+        } catch (InstantiationException exception) {
+            throw new RuntimeException("It's not possible to create an instance of a class", exception);
+        } catch (IllegalAccessException exception) {
+            throw new JdbcDaoException("There is no access to the definition of the specified class, field, method or constructor",
+                    "Set the accessible flag 'true'", exception);
+        } catch (InvocationTargetException | NoSuchMethodException exception) {
+            String className = entityType.getSimpleName();
+            throw new ReflectionException(String.format("The is an issuer to create an instance of the class '%s'", className),
+                    String.format("Check the existence of constructor in '%s' class", className), exception);
+        }
+        return entity;
+    }
+
+    private <E extends SQLException> void performStatement(
+            ThrowableCustomConsumer<Connection, E> preparedStatementConsumer,
+            String cause
+    ) {
+        performReturningStatement(
+                ps -> {
+                    preparedStatementConsumer.accept(ps);
+                    return null;
+                },
+                cause
+        );
+    }
+
+    private <T, E extends SQLException> T performReturningStatement(
+            ThrowableCustomFunction<Connection, T, E> psFunction,
+            String cause) {
+        T result;
+        try (Connection connection = dataSource.getConnection()) {
+            result = psFunction.apply(connection);
+        } catch (SQLException exception) {
+            throw new JdbcDaoException(cause, CHECK_YOUR_SQL_QUERY, exception);
+        }
+        return result;
+    }
+
+    @FunctionalInterface
+    private interface ThrowableCustomConsumer<T, E extends Throwable> {
+
+        void accept(T t) throws E;
+    }
+
+    @FunctionalInterface
+    private interface ThrowableCustomFunction<T, R, E extends Throwable> {
+
+        R apply(T t) throws E;
     }
 }

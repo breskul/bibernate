@@ -4,15 +4,7 @@ import com.breskul.bibernate.annotation.Id;
 import com.breskul.bibernate.annotation.JoinColumn;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
-import jakarta.persistence.EntityGraph;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.EntityTransaction;
-import jakarta.persistence.FlushModeType;
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.Query;
-import jakarta.persistence.StoredProcedureQuery;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaDelete;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -21,20 +13,9 @@ import jakarta.persistence.metamodel.Metamodel;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 
-import static com.breskul.bibernate.persistence.util.DaoUtils.getFieldByAnnotation;
-import static com.breskul.bibernate.persistence.util.DaoUtils.getFieldValue;
-import static com.breskul.bibernate.persistence.util.DaoUtils.isEntityCollectionField;
-import static com.breskul.bibernate.persistence.util.DaoUtils.isEntityField;
-import static com.breskul.bibernate.persistence.util.DaoUtils.isRegularField;
-import static com.breskul.bibernate.persistence.util.DaoUtils.isValidEntity;
-import static com.breskul.bibernate.persistence.util.DaoUtils.resolveFieldName;
+import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
 public class EntityManagerImpl implements EntityManager {
     private final JdbcDao jdbcDao;
@@ -116,7 +97,9 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public <T> T find(Class<T> entityClass, Object primaryKey) {
-        return null;
+        String tableName = DaoUtils.getClassTableName(entityClass);
+        Field identifierField = DaoUtils.getIdentifierField(entityClass);
+        return jdbcDao.findOneBy(entityClass, tableName, identifierField, primaryKey);
     }
 
     @Override
