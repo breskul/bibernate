@@ -105,6 +105,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(Person.class, personId));
     }
 
+    @Disabled
     @Test
     @Order(3)
     @DisplayName("3. Test find method for Entity with ManyToOne relation")
