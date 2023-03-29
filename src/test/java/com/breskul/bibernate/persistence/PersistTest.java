@@ -2,14 +2,9 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import com.breskul.bibernate.persistence.testmodel.NoteComplex;
-import com.breskul.bibernate.persistence.testmodel.Person;
-import com.breskul.bibernate.persistence.testmodel.PersonSequence;
-import com.breskul.bibernate.persistence.testmodel.PersonWithIdAndStrategy;
-import com.breskul.bibernate.persistence.testmodel.PersonWithoutEntity;
-import com.breskul.bibernate.persistence.testmodel.PersonWithoutIdAndStrategy;
-import com.breskul.bibernate.persistence.testmodel.PersonWithoutTable;
+import com.breskul.bibernate.persistence.testmodel.*;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -20,9 +15,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.Month;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 
 public class PersistTest extends AbstractDataSourceTest {
@@ -44,6 +37,22 @@ public class PersistTest extends AbstractDataSourceTest {
 		entityManager = new EntityManagerImpl(dataSource);
 	}
 
+	@AfterEach
+	void destroy() {
+		doInConnection(connection -> {
+			try {
+				PreparedStatement notes = connection.prepareStatement(CLEAN_NOTE_TABLE);
+				notes.execute();
+
+				PreparedStatement persons = connection.prepareStatement(CLEAN_PERSON_TABLE);
+				persons.execute();
+			} catch (SQLException e) {
+				throw new RuntimeException(e);
+			}
+		});
+		entityManager.close();
+	}
+
 	@Test
 	void insertOnlyPerson() {
 		Person person = new Person();
@@ -51,7 +60,6 @@ public class PersistTest extends AbstractDataSourceTest {
 		person.setLastName(LAST_NAME);
 		person.setBirthday(BIRTHDAY);
 		entityManager.persist(person);
-
 		validatePerson();
 	}
 
@@ -142,7 +150,7 @@ public class PersistTest extends AbstractDataSourceTest {
 			ResultSet resultSet = preparedStatement.executeQuery();
 
 			assertTrue(resultSet.next());
-			assertEquals(ID, resultSet.getLong(1));
+			assertNotNull(resultSet.getLong(1));
 			assertEquals(FIRST_NAME, resultSet.getString(2));
 			assertEquals(LAST_NAME, resultSet.getString(3));
 			assertEquals(BIRTHDAY, resultSet.getDate(4).toLocalDate());

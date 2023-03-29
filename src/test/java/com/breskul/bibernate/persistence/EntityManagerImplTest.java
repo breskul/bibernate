@@ -7,7 +7,6 @@ import com.breskul.bibernate.persistence.testmodel.Person;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.*;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -15,11 +14,10 @@ import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@TestClassOrder(ClassOrderer.OrderAnnotation.class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EntityManagerImplTest extends AbstractDataSourceTest {
 
     private static final String INSERT_NEW_PERSON_QUERY_PATTERN = "INSERT INTO users (id, first_name, last_name, birthday) VALUES (%d, '%s', '%s', ?)";
@@ -31,6 +29,22 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @BeforeEach
     void setUp() {
         entityManager = new EntityManagerImpl(dataSource);
+    }
+
+    @AfterEach
+    void destroy() {
+        doInConnection(connection -> {
+            try {
+                PreparedStatement notes = connection.prepareStatement(CLEAN_NOTE_TABLE);
+                notes.execute();
+
+                PreparedStatement persons = connection.prepareStatement(CLEAN_PERSON_TABLE);
+                persons.execute();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        entityManager.close();
     }
 
     @Test
@@ -53,8 +67,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
             }
         });
         Assertions.assertDoesNotThrow(() -> entityManager.remove(person));
-
-        entityManager.close();
     }
 
     @Test
@@ -91,10 +103,8 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         assertEquals(birthday.toLocalDate(), selectedPerson.getBirthday());
         Assertions.assertDoesNotThrow(() -> entityManager.remove(selectedPerson));
         Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(Person.class, personId));
-        entityManager.close();
     }
 
-    @Disabled
     @Test
     @Order(3)
     @DisplayName("3. Test find method for Entity with ManyToOne relation")
@@ -121,13 +131,18 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
 
         doInConnection(connection -> {
             try {
+                connection.setAutoCommit(false);
                 PreparedStatement newPerson = connection.prepareStatement(personInsertQuery);
                 newPerson.setObject(1, new Timestamp(birthdayLong));
                 newPerson.execute();
+                newPerson.close();
 
                 PreparedStatement newNote = connection.prepareStatement(noteInsertQuery);
                 newNote.setTimestamp(1, new Timestamp(date));
                 newNote.execute();
+                newNote.close();
+                connection.commit();
+
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -152,17 +167,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
 
         Assertions.assertDoesNotThrow(() -> entityManager.remove(selectedPerson));
         Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(Person.class, personId));
-
-        entityManager.close();
     }
-
-    private void doInConnection(Consumer<Connection> consumer) {
-        try (Connection connection = dataSource.getConnection()) {
-            consumer.accept(connection);
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
 
 }
