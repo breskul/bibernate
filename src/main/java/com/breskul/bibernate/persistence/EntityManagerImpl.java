@@ -98,8 +98,7 @@ public class EntityManagerImpl implements EntityManager {
     @Override
     public <T> T find(Class<T> entityClass, Object primaryKey) {
         String tableName = DaoUtils.getClassTableName(entityClass);
-        Field identifierField = DaoUtils.getIdentifierField(entityClass);
-        return jdbcDao.findOneBy(entityClass, tableName, identifierField, primaryKey);
+        return jdbcDao.findByIdentifier(entityClass, tableName, primaryKey);
     }
 
     @Override

@@ -25,7 +25,6 @@ import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 public class JdbcDao {
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDao.class);
-    private static final String CHECK_YOUR_SQL_QUERY = "check your sql query";
     private static final String CAUSE_SQL_EXCEPTION_PATTERN = "error occurred while executing 'SELECT BY %s' statement";
     private final DataSource dataSource;
     private final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
@@ -87,7 +86,7 @@ public class JdbcDao {
     public <T> T findOneBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
         List<T> resultList = findAllBy(entityType, tableName, field, columnValue);
         if (resultList.size() != 1) {
-            throw new JdbcDaoException("The result must contain exactly one row", CHECK_YOUR_SQL_QUERY);
+            throw new JdbcDaoException("The result must contain exactly one row");
         }
         return resultList.get(0);
     }
@@ -102,7 +101,7 @@ public class JdbcDao {
                     logger.info("SQL: {}", preparedStatement);
                     int rowDeleted = preparedStatement.executeUpdate();
                     if (rowDeleted == 0) {
-                        throw new JdbcDaoException(cause, CHECK_YOUR_SQL_QUERY);
+                        throw new JdbcDaoException(cause);
                     }
                 },
                 cause
@@ -233,7 +232,7 @@ public class JdbcDao {
         try (Connection connection = dataSource.getConnection()) {
             result = psFunction.apply(connection);
         } catch (SQLException exception) {
-            throw new JdbcDaoException(cause, CHECK_YOUR_SQL_QUERY, exception);
+            throw new JdbcDaoException(cause, exception);
         }
         return result;
     }
