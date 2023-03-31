@@ -15,11 +15,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
@@ -89,10 +85,13 @@ public class JdbcDao {
 
     public <T> T findOneBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
         List<T> resultList = findAllBy(entityType, tableName, field, columnValue);
-        if (resultList.size() != 1) {
+        if (resultList.size() > 1) {
             throw new JdbcDaoException("The result must contain exactly one row");
+        } else if (resultList.size() == 1) {
+            return resultList.get(0);
+        } else {
+            return null;
         }
-        return resultList.get(0);
     }
 
     public void deleteByIdentifier(String tableName, String identifierName, Object identifier) {

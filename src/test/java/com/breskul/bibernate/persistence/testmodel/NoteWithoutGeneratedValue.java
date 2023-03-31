@@ -1,11 +1,6 @@
 package com.breskul.bibernate.persistence.testmodel;
 
-import com.breskul.bibernate.annotation.Column;
-import com.breskul.bibernate.annotation.Entity;
-import com.breskul.bibernate.annotation.Id;
-import com.breskul.bibernate.annotation.JoinColumn;
-import com.breskul.bibernate.annotation.ManyToOne;
-import com.breskul.bibernate.annotation.Table;
+import com.breskul.bibernate.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -15,7 +10,7 @@ import java.time.LocalDateTime;
 @Data
 @Table(name = "notes")
 @EqualsAndHashCode(exclude = "person")
-public class NodeWithoutGeneratedValue {
+public class NoteWithoutGeneratedValue {
 
     @Id
     private Long id;

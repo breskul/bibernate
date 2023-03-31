@@ -8,7 +8,8 @@
 
 BIBERNATE is open source ORM for RDBMS databases with strong code quality and excellent test coverage,
 which has a lot of features for persisting entities.
-It provides simple and understandable annotation mapping, configuration, cache first level, persistence context, entity manager, concurrency control etc.
+It provides simple and understandable annotation mapping, configuration, cache first level, persistence context, 
+entity manager, concurrency control etc.
 The list of all features with code examples you can find in this guide.
 
 #### Developed by BRESKUL team in bound of educational program https://www.bobocode.com/
@@ -23,6 +24,10 @@ The list of all features with code examples you can find in this guide.
     - [Quick start](#quick-start)
 - [Technologies](#technologies)
     - [Technology stack](#technology-stack)
+- [Entity Mapping](#entity-manager)
+    - [@OneToOne](#onetoone)
+    - [@OneToMany](#onetomany)
+    - [@OneToOne](#onetoone)
 - [Feature list](#feature-list)
     - [Entity Manager](#entity-manager)
         - [persist](#persist)
@@ -122,6 +127,12 @@ public class DemoApp {
   `log4j-core`        	      |  `2.7`
 
 
+## Entity Mapping
+##### @OneToOne
+##### @OneToMany
+##### @ManyToOne
+
+
 ## Feature list
 ***
 There are many features implemented in the project. All features are tested.
@@ -150,7 +161,8 @@ There are many features implemented in the project. All features are tested.
 
 ##### find
 > Find by `primary key`, using the specified properties. Search for an entity of the specified class and primary key. 
-> If the entity instance is contained in the persistence context, it is returned from there. If a vendor-specific property or hint is not recognized, it is silently ignored.
+> If the entity instance is contained in the persistence context, it is returned from there. If a vendor-specific 
+> property or hint is not recognized, it is silently ignored.
 > ###### <u>Params</u>:
 > * entityClass – entity class 
 > * primaryKey – primary key properties – standard and vendor-specific properties and hints

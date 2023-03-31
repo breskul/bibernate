@@ -1,13 +1,8 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
-import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.TransactionException;
-import com.breskul.bibernate.persistence.testmodel.NodeWithoutGeneratedValue;
-import com.breskul.bibernate.persistence.testmodel.NoteComplex;
-import com.breskul.bibernate.persistence.testmodel.Person;
-import com.breskul.bibernate.persistence.testmodel.PersonWithoutGeneratedValue;
-import com.breskul.bibernate.persistence.testmodel.PersonWithoutIdAndStrategy;
+import com.breskul.bibernate.persistence.testmodel.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.*;
@@ -17,9 +12,8 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.Month;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class EntityManagerImplTest extends AbstractDataSourceTest {
 
     private EntityManager entityManager;
@@ -46,8 +40,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
-    @Order(1)
-    @DisplayName("1. Test remove method without transaction")
+    @DisplayName("Test remove method without transaction")
     public void removeMethodWithoutTransaction() {
         EntityManager entityManager = new EntityManagerImpl(dataSource);
         Person person = new Person();
@@ -58,8 +51,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
-    @Order(2)
-    @DisplayName("1. Test remove method")
+    @DisplayName("Test remove method")
     public void removeMethodWithTransaction() {
         PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
         person.setId(10L);
@@ -72,83 +64,107 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         entityTransaction.commit();
 
         entityTransaction.begin();
-        Assertions.assertDoesNotThrow(() -> entityManager.remove(person));
+        assertDoesNotThrow(() -> entityManager.remove(person));
         entityTransaction.commit();
     }
 
     @Test
-    @Order(2)
-    @DisplayName("2. Test find method for Entity with OneToMany relation")
+    @DisplayName("Test find method for Entity with OneToMany relation")
     public void testFindMethodWithOneToManyRelation() {
         long personId = 20L;
         PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
         person.setId(personId);
         person.setFirstName("Tom");
         person.setLastName("Hanks");
-        var birthday = LocalDateTime.of(1956, Month.JULY, 9, 10,0,0).toLocalDate();
+        var birthday = LocalDateTime.of(1956, Month.JULY, 9, 10, 0, 0).toLocalDate();
         person.setBirthday(birthday);
 
         EntityTransaction entityTransaction = entityManager.getTransaction();
         entityTransaction.begin();
 
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(PersonWithoutIdAndStrategy.class, personId));
+        assertNull(entityManager.find(PersonWithoutIdAndStrategy.class, personId));
         entityManager.persist(person);
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(Person.class, 10L));
-        Assertions.assertDoesNotThrow(() -> entityManager.find(Person.class, personId));
+        assertNull(entityManager.find(Person.class, 10L));
+        assertDoesNotThrow(() -> entityManager.find(Person.class, personId));
         var selectedPerson = entityManager.find(Person.class, personId);
         assertEquals(person.getFirstName(), selectedPerson.getFirstName());
         assertEquals(person.getLastName(), selectedPerson.getLastName());
         assertEquals(person.getBirthday(), selectedPerson.getBirthday());
-        Assertions.assertDoesNotThrow(() -> entityManager.remove(selectedPerson));
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(Person.class, personId));
+        assertDoesNotThrow(() -> entityManager.remove(selectedPerson));
+        assertNull(entityManager.find(Person.class, personId));
 
         entityTransaction.commit();
     }
 
     @Test
-    @Order(3)
-    @DisplayName("3. Test find method for Entity with ManyToOne relation")
+    @DisplayName("Test find method for Entity with ManyToOne relation")
     public void testFindMethodWithManyToOneRelation() {
         EntityTransaction entityTransaction = entityManager.getTransaction();
         entityTransaction.begin();
 
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(NodeWithoutGeneratedValue.class, 30L));
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 30L));
 
         PersonWithoutGeneratedValue person = new PersonWithoutGeneratedValue();
         person.setFirstName("Keanu");
         person.setLastName("Reeves");
         person.setId(30L);
-        person.setBirthday(LocalDateTime.of(1964, Month.SEPTEMBER, 2, 10,0,0).toLocalDate());
+        person.setBirthday(LocalDateTime.of(1964, Month.SEPTEMBER, 2, 10, 0, 0).toLocalDate());
 
         entityManager.persist(person);
 
-        NodeWithoutGeneratedValue node = new NodeWithoutGeneratedValue();
-        node.setId(30L);
-        node.setBody("note");
-        node.setPerson(person);
+        NoteWithoutGeneratedValue note = new NoteWithoutGeneratedValue();
+        note.setId(30L);
+        note.setBody("note");
+        note.setPerson(person);
 
-        entityManager.persist(node);
+        entityManager.persist(note);
 
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(PersonWithoutGeneratedValue.class, 10L));
-        Assertions.assertDoesNotThrow(() -> entityManager.find(PersonWithoutGeneratedValue.class, person.getId()));
+        assertNull(entityManager.find(PersonWithoutGeneratedValue.class, 10L));
+        assertDoesNotThrow(() -> entityManager.find(PersonWithoutGeneratedValue.class, person.getId()));
         var selectedPerson = entityManager.find(PersonWithoutGeneratedValue.class, person.getId());
         assertEquals(person.getFirstName(), selectedPerson.getFirstName());
         assertEquals(person.getLastName(), selectedPerson.getLastName());
         assertEquals(person.getBirthday(), selectedPerson.getBirthday());
 
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(NodeWithoutGeneratedValue.class, 10L));
-        Assertions.assertDoesNotThrow(() -> entityManager.find(NodeWithoutGeneratedValue.class, node.getId()));
-        var selectedNote = entityManager.find(NodeWithoutGeneratedValue.class, node.getId());
-        assertEquals(node.getBody(), selectedNote.getBody());
-        assertEquals(node.getPerson().getId(), selectedNote.getPerson().getId());
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 10L));
+        assertDoesNotThrow(() -> entityManager.find(NoteWithoutGeneratedValue.class, note.getId()));
+        var selectedNote = entityManager.find(NoteWithoutGeneratedValue.class, note.getId());
+        assertEquals(note.getBody(), selectedNote.getBody());
+        assertEquals(note.getPerson().getId(), selectedNote.getPerson().getId());
 
-        Assertions.assertDoesNotThrow(() -> entityManager.remove(selectedNote));
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(NoteComplex.class, node.getId()));
+        assertDoesNotThrow(() -> entityManager.remove(selectedNote));
+        assertNull(entityManager.find(NoteComplex.class, note.getId()));
 
-        Assertions.assertDoesNotThrow(() -> entityManager.remove(selectedPerson));
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.find(Person.class, person.getId()));
+        assertDoesNotThrow(() -> entityManager.remove(selectedPerson));
+        assertNull(entityManager.find(Person.class, person.getId()));
 
         entityTransaction.commit();
+    }
+
+    @Test
+    @DisplayName("Test find method for Entity with ManyToOne relation. Related Object is Null")
+    public void testFindMethodWithManyToOneRelationRelatedObjectIsNull() {
+        entityManager.getTransaction().begin();
+        NoteWithoutGeneratedValue noteWithoutGeneratedValue = entityManager.find(NoteWithoutGeneratedValue.class, 33L);
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 33L));
+
+        NoteWithoutGeneratedValue note = new NoteWithoutGeneratedValue();
+        note.setId(33L);
+        note.setBody("a new note");
+
+        entityManager.persist(note);
+
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 10L));
+        assertDoesNotThrow(() -> entityManager.find(NoteWithoutGeneratedValue.class, note.getId()));
+        var selectedNote = entityManager.find(NoteWithoutGeneratedValue.class, note.getId());
+        assertNotNull(selectedNote);
+        assertEquals(note.getBody(), selectedNote.getBody());
+        assertNull(selectedNote.getPerson());
+
+        assertDoesNotThrow(() -> entityManager.remove(selectedNote));
+        assertNull(entityManager.find(NoteComplex.class, note.getId()));
+
+        entityManager.getTransaction().commit();
     }
 
 }

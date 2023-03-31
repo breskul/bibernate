@@ -142,6 +142,27 @@ public class PersistTest extends AbstractDataSourceTest {
 		validateNote();
 	}
 
+	@Test
+	void insertNoteWithoutPerson() {
+		NoteWithoutGeneratedValue note = new NoteWithoutGeneratedValue();
+		note.setId(22L);
+		note.setBody(NOTE_BODY);
+		EntityTransaction entityTransaction = entityManager.getTransaction();
+		entityTransaction.begin();
+		entityManager.persist(note);
+		entityTransaction.commit();
+
+		entityTransaction = entityManager.getTransaction();
+		entityTransaction.begin();
+		NoteComplex selectedNote = entityManager.find(NoteComplex.class, 22L);
+		assertNotNull(selectedNote);
+		assertEquals(note.getBody(), selectedNote.getBody());
+		assertNull(selectedNote.getPerson());
+
+		entityManager.remove(selectedNote);
+		entityTransaction.commit();
+	}
+
 	private void validateNote() {
 		try (Connection connection = dataSource.getConnection()) {
 			PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM notes");

@@ -2,6 +2,7 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.annotation.Id;
 import com.breskul.bibernate.annotation.JoinColumn;
+import com.breskul.bibernate.annotation.ManyToOne;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
@@ -14,18 +15,15 @@ import jakarta.persistence.metamodel.Metamodel;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
 public class EntityManagerImpl implements EntityManager {
     private final DataSource dataSource;
     private final JdbcDao jdbcDao;
+
+    private transient EntityTransactionImpl entityTransaction;
 
     public EntityManagerImpl(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -45,15 +43,15 @@ public class EntityManagerImpl implements EntityManager {
                 if (entityId != null) {
                     processRegularField(columns, values, idField, entityId);
                 }
-                continue;
-            }
-            Object fieldValue = getFieldValue(entityToSave, declaredField);
-            if (isRegularField(declaredField)) {
-                processRegularField(columns, values, declaredField, fieldValue);
-            } else if (isEntityCollectionField(declaredField)) {
-                processCollection(queue, fieldValue);
-            } else if (isEntityField(declaredField)) {
-                processEntityField(columns, values, declaredField, fieldValue);
+            } else {
+                Object fieldValue = getFieldValue(entityToSave, declaredField);
+                if (isRegularField(declaredField)) {
+                    processRegularField(columns, values, declaredField, fieldValue);
+                } else if (isEntityCollectionField(declaredField)) {
+                    processCollection(queue, fieldValue);
+                } else if (isEntityField(declaredField)) {
+                    processEntityField(columns, values, declaredField, fieldValue);
+                }
             }
         }
 
@@ -79,11 +77,14 @@ public class EntityManagerImpl implements EntityManager {
     private void processEntityField(List<String> columns, List<Object> values, Field declaredField, Object fieldValue) {
         Object relatedEntity = JdbcDao.ENTITY_ID_MAP.get(fieldValue);
         if (relatedEntity != null) {
-            String name = declaredField.getAnnotation(JoinColumn.class).name();
+            JoinColumn annotation = declaredField.getAnnotation(JoinColumn.class);
+            String name = annotation.name();
             columns.add(name);
             values.add(relatedEntity);
         } else {
-            throw new JdbcDaoException("Can't use transient entity here", "Make sure not to use transient entity in session");
+            if (!declaredField.getAnnotation(ManyToOne.class).optional()) {
+                throw new JdbcDaoException("Can't use transient entity here", "Make sure not to use transient entity in session");
+            }
         }
     }
 
@@ -304,12 +305,20 @@ public class EntityManagerImpl implements EntityManager {
 
     /**
      * Return EntityTransaction.
-     * @throws TransactionException if can not get connection
+     *
      * @return EntityTransaction interface
+     * @throws TransactionException if can not get connection
      **/
     @Override
     public EntityTransaction getTransaction() {
-        return new EntityTransactionImpl(this.dataSource, this.jdbcDao);
+        return accessTransaction();
+    }
+
+    public EntityTransaction accessTransaction() {
+        if (this.entityTransaction == null) {
+            this.entityTransaction = new EntityTransactionImpl(this.dataSource, this.jdbcDao);
+        }
+        return this.entityTransaction;
     }
 
     @Override

@@ -1,10 +1,6 @@
 package com.breskul.bibernate.persistence.testmodel;
 
-import com.breskul.bibernate.annotation.Column;
-import com.breskul.bibernate.annotation.Entity;
-import com.breskul.bibernate.annotation.Id;
-import com.breskul.bibernate.annotation.OneToMany;
-import com.breskul.bibernate.annotation.Table;
+import com.breskul.bibernate.annotation.*;
 import lombok.Data;
 import lombok.ToString;
 
@@ -27,9 +23,9 @@ public class PersonWithoutGeneratedValue {
     private LocalDate birthday;
 
     @OneToMany
-    private List<NodeWithoutGeneratedValue> notes = new ArrayList<>();
+    private List<NoteWithoutGeneratedValue> notes = new ArrayList<>();
 
-    public void addNote(NodeWithoutGeneratedValue note) {
+    public void addNote(NoteWithoutGeneratedValue note) {
         note.setPerson(this);
         notes.add(note);
     }
