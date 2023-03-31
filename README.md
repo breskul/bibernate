@@ -28,8 +28,15 @@ The list of all features with code examples you can find in this guide.
         - [persist](#persist)
         - [remove](#remove)
         - [find](#find)
-
-
+    - [Entity Transaction](#entity-transaction)
+        - [Create EntityTransaction](#create-entitytransaction)
+        - [Begin new transaction](#begin-new-transaction)
+        - [Commit transaction](#commit-transaction)
+        - [Rollback transaction](#rollback-transaction)
+        - [Check status transaction](#check-status-transaction)
+        - [Set up rollback mode](#set-up-rollback-mode)
+        - [Get status rollback mode](#get-status-rollback-mode)
+    
 <!-- /TOC -->
 
 
