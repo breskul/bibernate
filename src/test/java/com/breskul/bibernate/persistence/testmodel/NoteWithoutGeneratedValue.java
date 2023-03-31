@@ -6,16 +6,13 @@ import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
-import static com.breskul.bibernate.annotation.Strategy.SEQUENCE;
-
 @Entity
 @Data
 @Table(name = "notes")
 @EqualsAndHashCode(exclude = "person")
-public class NoteComplex {
+public class NoteWithoutGeneratedValue {
 
     @Id
-    @GeneratedValue(strategy = SEQUENCE)
     private Long id;
     private String body;
 
@@ -24,6 +21,5 @@ public class NoteComplex {
 
     @ManyToOne
     @JoinColumn(name = "person_id")
-    private Person person;
-
+    private PersonWithoutGeneratedValue person;
 }

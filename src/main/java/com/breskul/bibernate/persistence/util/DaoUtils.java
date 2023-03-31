@@ -1,11 +1,6 @@
 package com.breskul.bibernate.persistence.util;
 
-import com.breskul.bibernate.annotation.Column;
-import com.breskul.bibernate.annotation.Entity;
-import com.breskul.bibernate.annotation.Id;
-import com.breskul.bibernate.annotation.ManyToOne;
-import com.breskul.bibernate.annotation.OneToMany;
-import com.breskul.bibernate.annotation.Table;
+import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
@@ -31,6 +26,10 @@ public class DaoUtils {
     public static String getIdentifierFieldName(Class<?> entityClass) {
         Field field = getIdentifierField(entityClass);
         return field.getName();
+    }
+
+    public static String getColumnName(Field field) {
+        return Optional.ofNullable(field.getAnnotation(Column.class)).map(Column::name).orElse(field.getName());
     }
 
     public static <T> Object getIdentifierValue(T entity) {
@@ -72,8 +71,12 @@ public class DaoUtils {
             if (fieldName != null && !fieldName.isEmpty()) {
                 return fieldName;
             }
+        } else if (field.isAnnotationPresent(JoinColumn.class)){
+            String fieldName = field.getAnnotation(JoinColumn.class).name();
+            if (fieldName != null && !fieldName.isEmpty()) {
+                return fieldName;
+            }
         }
-
         return field.getName();
     }
 
@@ -101,6 +104,14 @@ public class DaoUtils {
 
     public static boolean isEntityCollectionField(Field field) {
         return field.isAnnotationPresent(OneToMany.class);
+    }
+
+    public static <T> Field getRelatedEntityField(Class<T> fromEntity, Class<?> toEntityType) {
+        return Arrays.stream(toEntityType.getDeclaredFields())
+                .filter(f -> f.getType().equals(fromEntity))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(String.format("Cannon find related field between in '%s' fro '%s'",
+                        toEntityType.getSimpleName(), fromEntity.getSimpleName())));
     }
 
 }
