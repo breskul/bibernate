@@ -28,8 +28,15 @@ The list of all features with code examples you can find in this guide.
         - [persist](#persist)
         - [remove](#remove)
         - [find](#find)
-
-
+    - [Entity Transaction](#entity-transaction)
+        - [Create EntityTransaction](#create-entitytransaction)
+        - [Begin new transaction](#begin-new-transaction)
+        - [Commit transaction](#commit-transaction)
+        - [Rollback transaction](#rollback-transaction)
+        - [Check status transaction](#check-status-transaction)
+        - [Set up rollback mode](#set-up-rollback-mode)
+        - [Get status rollback mode](#get-status-rollback-mode)
+    
 <!-- /TOC -->
 
 
@@ -65,6 +72,7 @@ import com.breskul.bibernate.persistence.EntityManagerImpl;
 import com.breskul.bibernate.persistence.testmodel.Person;
 import com.breskul.bibernate.repository.DataSourceFactory;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 
 import javax.sql.DataSource;
 import java.time.LocalDate;
@@ -76,6 +84,9 @@ public class DemoApp {
         DataSourceFactory dataSourceFactory = DataSourceFactory.getInstance();
         DataSource dataSource = dataSourceFactory.getDataSource();
         EntityManager entityManager = new EntityManagerImpl(dataSource);
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+        
+        entityTransaction.begin();
 
         Person person = new Person();
         person.setFirstName("Keanu");
@@ -86,6 +97,8 @@ public class DemoApp {
         Person selectedPerson = entityManager.find(Person.class, 1L);
         System.out.println(selectedPerson);
         entityManager.remove(selectedPerson);
+        
+        entityTransaction.commit();
     }
 }
 ```
@@ -148,6 +161,47 @@ There are many features implemented in the project. All features are tested.
 > Person person = entityManager.find(Person.class, 1L);
 > ```
 
+### Entity Transaction
+
+Hibernate provide transaction mechanism.
+Before use persistence operations need create EntityTransaction and open new transaction
+and after operations need to make commit or rollback transaction
+
+##### Create EntityTransaction
+>```java
+> EntityTransaction entityTransaction = entityManager.getTransaction();
+> ```
+
+##### Begin new transaction
+>```java
+> entityTransaction.begin();
+> ```
+
+##### Commit transaction
+>```java
+> entityTransaction.commit();
+> ```
+
+##### Rollback transaction
+>```java
+> entityTransaction.rollback();
+> ```
+
+##### Check status transaction
+>```java
+> entityTransaction.isActive();
+> ```
+
+##### Set up rollback mode
+>Set up rollback only mode will to do rollback for commit too
+> ```java
+> entityTransaction.setRollbackOnly();
+> ```
+
+##### Get status rollback mode
+> ```java
+> entityTransaction.getRollbackOnly();
+> ```
 
 ## Our BRESKUL Team
 ***

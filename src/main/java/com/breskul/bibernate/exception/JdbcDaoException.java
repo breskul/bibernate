@@ -1,6 +1,6 @@
 package com.breskul.bibernate.exception;
 
-public class JdbcDaoException extends CommonException {
+public  class JdbcDaoException extends CommonException {
 
     private static final String CHECK_YOUR_SQL_QUERY = "check your sql query";
 

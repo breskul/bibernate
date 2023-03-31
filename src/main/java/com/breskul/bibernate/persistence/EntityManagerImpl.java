@@ -3,6 +3,7 @@ package com.breskul.bibernate.persistence;
 import com.breskul.bibernate.annotation.Id;
 import com.breskul.bibernate.annotation.JoinColumn;
 import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -13,15 +14,22 @@ import jakarta.persistence.metamodel.Metamodel;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
 public class EntityManagerImpl implements EntityManager {
+    private final DataSource dataSource;
     private final JdbcDao jdbcDao;
 
     public EntityManagerImpl(DataSource dataSource) {
-        this.jdbcDao = new JdbcDao(dataSource);
+        this.dataSource = dataSource;
+        this.jdbcDao = new JdbcDao();
     }
 
     @Override
@@ -51,9 +59,7 @@ public class EntityManagerImpl implements EntityManager {
 
         jdbcDao.executeInsert(entityToSave, values, columns);
         processActionQueue(queue);
-
     }
-
 
     private void processActionQueue(Queue<Collection<?>> queue) {
         queue.forEach(collection -> collection.forEach(this::persist));
@@ -296,9 +302,14 @@ public class EntityManagerImpl implements EntityManager {
         return false;
     }
 
+    /**
+     * Return EntityTransaction.
+     * @throws TransactionException if can not get connection
+     * @return EntityTransaction interface
+     **/
     @Override
     public EntityTransaction getTransaction() {
-        return null;
+        return new EntityTransactionImpl(this.dataSource, this.jdbcDao);
     }
 
     @Override

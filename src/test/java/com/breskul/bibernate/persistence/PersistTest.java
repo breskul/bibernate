@@ -4,6 +4,7 @@ import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.persistence.testmodel.*;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,6 @@ import java.time.LocalDate;
 import java.time.Month;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 
 public class PersistTest extends AbstractDataSourceTest {
 
@@ -59,7 +59,10 @@ public class PersistTest extends AbstractDataSourceTest {
 		person.setFirstName(FIRST_NAME);
 		person.setLastName(LAST_NAME);
 		person.setBirthday(BIRTHDAY);
+		EntityTransaction entityTransaction = entityManager.getTransaction();
+		entityTransaction.begin();
 		entityManager.persist(person);
+		entityTransaction.commit();
 		validatePerson();
 	}
 
@@ -69,7 +72,10 @@ public class PersistTest extends AbstractDataSourceTest {
 		person.setFirstName(FIRST_NAME);
 		person.setLastName(LAST_NAME);
 		person.setBirthday(BIRTHDAY);
+		EntityTransaction entityTransaction = entityManager.getTransaction();
+		entityTransaction.begin();
 		JdbcDaoException jdbcDaoException = assertThrows(JdbcDaoException.class, () -> entityManager.persist(person));
+		entityTransaction.rollback();
 		assertEquals(TABLE_NOT_FOUND_MESSAGE, jdbcDaoException.getMessage());
 	}
 
@@ -79,7 +85,10 @@ public class PersistTest extends AbstractDataSourceTest {
 		person.setFirstName(FIRST_NAME);
 		person.setLastName(LAST_NAME);
 		person.setBirthday(BIRTHDAY);
+		EntityTransaction entityTransaction = entityManager.getTransaction();
+		entityTransaction.begin();
 		JdbcDaoException jdbcDaoException = assertThrows(JdbcDaoException.class, () -> entityManager.persist(person));
+		entityTransaction.commit();
 		assertEquals(NO_SEQUENCE_MESSAGE, jdbcDaoException.getMessage());
 	}
 
@@ -125,7 +134,10 @@ public class PersistTest extends AbstractDataSourceTest {
 		person.setLastName(LAST_NAME);
 		person.addNote(note);
 		person.setBirthday(BIRTHDAY);
+		EntityTransaction entityTransaction = entityManager.getTransaction();
+		entityTransaction.begin();
 		entityManager.persist(person);
+		entityTransaction.commit();
 		validatePerson();
 		validateNote();
 	}
