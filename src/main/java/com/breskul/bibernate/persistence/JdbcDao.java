@@ -82,7 +82,7 @@ public class JdbcDao {
                 list.add(entity);
             }
         } catch (SQLException exception) {
-            throw new JdbcDaoException(cause, CHECK_YOUR_SQL_QUERY, exception);
+            throw new JdbcDaoException(cause, exception);
         }
         return list;
     }
