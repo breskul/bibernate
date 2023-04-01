@@ -25,12 +25,10 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     public static final LocalDate BIRTHDAY = LocalDate.of(2023, Month.JANUARY, 1);
     public static final String NOTE_BODY = "WOW, my brain is steaming!";
     public static final String TABLE_NOT_FOUND_MESSAGE = "entity is not marked with @Table annotation - mark entity with table annotation";
-    public static final String NO_SEQUENCE_MESSAGE = "Can't execute query SELECT nextval('users_seq') - Make sure that sequence match the pattern 'tableName_seq'";
     public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.testmodel.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
     public static final String ID_AND_STRATEGY_MESSAGE = "detached entity is passed to persist - Make sure that you don't set id manually when using @GeneratedValue";
     public static final String WITHOUT_ID_AND_STRATEGY = "annotation GeneratedValue is not found - mark class with the GeneratedValue annotation";
 
-    private static final String NEW_PERSON_QUERY = "insert into users (id, first_name, last_name) values (10, 'Cat', 'Schrödinger')";
 
     private EntityManager entityManager;
 
@@ -249,26 +247,20 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @DisplayName("9. Test remove method")
     @Order(9)
     public void testRemoveMethod() {
-        EntityManager entityManager = new EntityManagerImpl(dataSource);
-        Person person = new Person();
-        person.setId(10L);
-        person.setFirstName("user");
-        Assertions.assertThrows(TransactionException.class, () -> entityManager.remove(person));
-
-        doInConnection(connection -> {
-            try {
-                PreparedStatement newNote = connection.prepareStatement(NEW_PERSON_QUERY);
-                newNote.execute();
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-        });
         EntityTransaction entityTransaction = entityManager.getTransaction();
+
+        entityTransaction.begin();
+        Person person = new Person();
+        person.setFirstName("user");
+        person.setLastName("user");
+        person.setBirthday(LocalDate.now());
+        entityManager.persist(person);
+        entityTransaction.commit();
+
 
         entityTransaction.begin();
         Assertions.assertDoesNotThrow(() -> entityManager.remove(person));
         entityTransaction.commit();
-        entityManager.close();
     }
 
     private void validatePerson(Long id) {
