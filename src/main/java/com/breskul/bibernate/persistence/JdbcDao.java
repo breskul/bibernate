@@ -1,13 +1,13 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
 import com.breskul.bibernate.persistence.util.Node;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.sql.*;
 import java.util.*;
@@ -20,10 +20,10 @@ public class JdbcDao {
     private static final String DELETE_STATEMENT = "DELETE FROM %s WHERE %s = ?";
     private static final String INSERT_QUERY = "INSERT INTO %s (%s) VALUES (%s)";
     private static final String SELECT_SEQ_QUERY = "SELECT nextval('%s_seq')";
-    private final DataSource dataSource;
+    private Connection connection;
 
-    public JdbcDao(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public void setConnection(Connection connection) {
+        this.connection = connection;
     }
 
     public void persist(Object parentEntity)  {
@@ -58,6 +58,12 @@ public class JdbcDao {
         }
 
     }
+    private Connection getConnection() {
+        if (Objects.isNull(connection)) {
+            throw new TransactionException("Transaction was not open", "Begin transaction before persist operations");
+        }
+        return connection;
+    }
     private Node buildTree(Object entityToSave) {
         Node parentNode = new Node(entityToSave, new ArrayList<>());
         var queue = new ArrayDeque<Node>();
@@ -83,8 +89,7 @@ public class JdbcDao {
     }
 
     public Long getSequenceId(String sequenceQuery) {
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sequenceQuery)) {
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(sequenceQuery)) {
             ResultSet resultSet = preparedStatement.executeQuery();
             resultSet.next();
             return resultSet.getLong(1);
@@ -95,8 +100,7 @@ public class JdbcDao {
 
     private Long insertEntity(String tableName, String sqlFieldNames, String sqlFieldValues) {
         var formattedInsertSql = String.format(INSERT_QUERY, tableName, sqlFieldNames, sqlFieldValues);
-        try (var connection = dataSource.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement(formattedInsertSql, Statement.RETURN_GENERATED_KEYS);
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedInsertSql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.executeUpdate();
             preparedStatement.getGeneratedKeys().next();
             return preparedStatement.getGeneratedKeys().getLong(1);
@@ -109,8 +113,7 @@ public class JdbcDao {
         String formattedDeleteStatement = String.format(DELETE_STATEMENT, tableName, identifierName);
         var cause = "error occurred while executing delete statement";
         var solution = "check your sql query";
-        try (Connection connection = dataSource.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement(formattedDeleteStatement);
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
             preparedStatement.setObject(1, identifier);
             logger.info("SQL:" + preparedStatement);
             int rowDeleted = preparedStatement.executeUpdate();

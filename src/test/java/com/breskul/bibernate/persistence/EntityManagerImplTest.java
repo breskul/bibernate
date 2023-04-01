@@ -2,8 +2,10 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.testmodel.*;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.*;
 
 import java.sql.Connection;
@@ -97,8 +99,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         person.setFirstName(FIRST_NAME);
         person.setLastName(LAST_NAME);
         person.setBirthday(BIRTHDAY);
-        JdbcDaoException jdbcDaoException = assertThrows(JdbcDaoException.class, () -> entityManager.persist(person));
-        assertEquals(NO_SEQUENCE_MESSAGE, jdbcDaoException.getMessage());
+        assertThrows(TransactionException.class, () -> entityManager.persist(person));
     }
 
     @Test
@@ -151,7 +152,11 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         person.setLastName(LAST_NAME);
         person.addNote(note);
         person.setBirthday(BIRTHDAY);
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+
+        entityTransaction.begin();
         entityManager.persist(person);
+        entityTransaction.commit();
         validatePerson(person.getId());
         validateNote(note.getId(), person.getId());
     }
@@ -176,7 +181,10 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         person.addNote(note1);
         person.addNote(note2);
         person.addNote(note3);
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+        entityTransaction.begin();
         entityManager.persist(person);
+        entityTransaction.commit();
 
         validatePerson(person.getId());
         validateNote(note1.getId(), person.getId());
@@ -220,8 +228,11 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         note2.addCompany(company3);
         note2.addCompany(company4);
 
+        EntityTransaction entityTransaction = entityManager.getTransaction();
 
+        entityTransaction.begin();
         entityManager.persist(person);
+        entityTransaction.commit();
 
         validatePerson(person.getId());
         validateNote(note1.getId(),person.getId());
@@ -242,7 +253,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         Person person = new Person();
         person.setId(10L);
         person.setFirstName("user");
-        Assertions.assertThrows(JdbcDaoException.class, () -> entityManager.remove(person));
+        Assertions.assertThrows(TransactionException.class, () -> entityManager.remove(person));
 
         doInConnection(connection -> {
             try {
@@ -252,8 +263,11 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
                 throw new RuntimeException(e);
             }
         });
-        Assertions.assertDoesNotThrow(() -> entityManager.remove(person));
+        EntityTransaction entityTransaction = entityManager.getTransaction();
 
+        entityTransaction.begin();
+        Assertions.assertDoesNotThrow(() -> entityManager.remove(person));
+        entityTransaction.commit();
         entityManager.close();
     }
 

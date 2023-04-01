@@ -1,5 +1,6 @@
 package com.breskul.bibernate.persistence;
 
+import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
 import jakarta.persistence.EntityGraph;
 import jakarta.persistence.EntityManager;
@@ -23,10 +24,12 @@ import java.util.Map;
 import static com.breskul.bibernate.persistence.util.DaoUtils.isValidEntity;
 
 public class EntityManagerImpl implements EntityManager {
+    private final DataSource dataSource;
     private final JdbcDao jdbcDao;
 
     public EntityManagerImpl(DataSource dataSource) {
-        this.jdbcDao = new JdbcDao(dataSource);
+        this.dataSource = dataSource;
+        this.jdbcDao = new JdbcDao();
     }
     public void persist(Object entity) {
         isValidEntity(entity);
@@ -247,9 +250,15 @@ public class EntityManagerImpl implements EntityManager {
         return false;
     }
 
+    /**
+     * Return EntityTransaction.
+     *
+     * @return EntityTransaction interface
+     * @throws TransactionException if can not get connection
+     **/
     @Override
     public EntityTransaction getTransaction() {
-        return null;
+        return new EntityTransactionImpl(this.dataSource, this.jdbcDao);
     }
 
     @Override
