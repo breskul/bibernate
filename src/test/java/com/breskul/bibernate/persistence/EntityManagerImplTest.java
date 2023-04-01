@@ -51,7 +51,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         });
     }
 
-    private void doInConnection(Consumer<Connection> consumer) {
+    public void doInConnection(Consumer<Connection> consumer) {
         try (Connection connection = dataSource.getConnection()) {
             consumer.accept(connection);
         } catch (SQLException e) {

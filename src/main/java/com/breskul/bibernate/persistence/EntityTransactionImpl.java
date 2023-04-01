@@ -131,7 +131,6 @@ public class EntityTransactionImpl implements EntityTransaction {
 
     private void openConnection() throws SQLException {
         this.connection = dataSource.getConnection();
-        this.jdbcDao.setConnection(connection);
     }
 
     private void closeConnection() {
@@ -140,6 +139,5 @@ public class EntityTransactionImpl implements EntityTransaction {
         } catch (SQLException exception) {
             throw new TransactionException("Cannot close connection", "Check db server health", exception);
         }
-        this.jdbcDao.setConnection(null);
     }
 }
