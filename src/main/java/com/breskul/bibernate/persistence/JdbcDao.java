@@ -1,10 +1,12 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.annotation.GeneratedValue;
+import com.breskul.bibernate.annotation.Id;
 import com.breskul.bibernate.annotation.Strategy;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
+import com.breskul.bibernate.persistence.util.CacheUtils;
 import com.breskul.bibernate.persistence.util.DaoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,21 +18,26 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Supplier;
 
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
 public class JdbcDao {
-
     private static final Logger logger = LoggerFactory.getLogger(JdbcDao.class);
-    private static final String CAUSE_SQL_EXCEPTION_PATTERN = "error occurred while executing 'SELECT BY %s' statement";
+
     private Connection connection;
-    private final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
+    private final Map<EntityKey<?>, Object> cache;
+
+    private static final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
     private static final String DELETE_STATEMENT = "DELETE FROM %s WHERE %s = ?";
     private static final String INSERT_QUERY = "INSERT INTO %s (%s) VALUES (%s)";
     private static final String SELECT_SEQ_QUERY = "SELECT nextval('%s_seq')";
-    protected static final Map<Object, Object> ENTITY_ID_MAP = new HashMap<>();
     private static final String H2_TABLE_NOT_FOUND_STATE = "42S02";
     private static final String POSTGRES_TABLE_NOT_FOUND_STATE = "42P01";
+
+    public JdbcDao(Map<EntityKey<?>, Object> cache) {
+        this.cache = cache;
+    }
 
     public void setConnection(Connection connection) {
         this.connection = connection;
@@ -67,7 +74,7 @@ public class JdbcDao {
         var columnName = DaoUtils.getColumnName(field);
         String formattedDeleteStatement =
                 String.format(SELECT_FROM_TABLE_BY_COLUMN_STATEMENT, alias, tableName, alias, alias, columnName);
-        final var cause = String.format(CAUSE_SQL_EXCEPTION_PATTERN, columnName);
+        final var cause = String.format("Error occurred while executing 'SELECT BY %s' statement", columnName);
         var list = new ArrayList<T>();
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
             preparedStatement.setObject(1, columnValue);
@@ -111,14 +118,18 @@ public class JdbcDao {
     }
 
     public void executeInsert(Object entityToSave, List<Object> values, List<String> columns) {
-        String tableName = getClassTableName(entityToSave.getClass());
+        Class<?> entityType = entityToSave.getClass();
+        String tableName = getClassTableName(entityType);
         String insertQuery = formatQuery(tableName, INSERT_QUERY, columns, values);
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
+            logger.info("SQL:" + preparedStatement);
             setPreparedValues(values, preparedStatement);
             preparedStatement.executeUpdate();
             preparedStatement.getGeneratedKeys().next();
-            Object next = preparedStatement.getGeneratedKeys().getObject(1);
-            ENTITY_ID_MAP.put(entityToSave, next);
+            Object id = preparedStatement.getGeneratedKeys().getObject(1);
+            setValueToField(entityToSave, id, Id.class);
+            EntityKey<?> entityKey = EntityKey.of(entityType, id);
+            cache.put(entityKey, entityToSave);
         } catch (SQLException e) {
             if (H2_TABLE_NOT_FOUND_STATE.equals(e.getSQLState()) || POSTGRES_TABLE_NOT_FOUND_STATE.equals(e.getSQLState())) {
                 throw new JdbcDaoException("Table %s not found".formatted(tableName), "Use @Table annotation to specify table's name", e);
@@ -194,7 +205,9 @@ public class JdbcDao {
                     var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
                     var joinColumnName = DaoUtils.resolveFieldName(field);
                     var joinColumnValue = resultSet.getObject(joinColumnName);
-                    var relatedEntity = findByIdentifier(relatedEntityType, relatedEntityTableName, joinColumnValue);
+                    Supplier<?> fetchSupplier = () -> findByIdentifier(relatedEntityType, relatedEntityTableName, joinColumnValue);
+                    EntityKey<?> entityKey = EntityKey.of(relatedEntityType, joinColumnValue);
+                    var relatedEntity = CacheUtils.processCache(entityKey, cache, fetchSupplier);
                     field.set(entity, relatedEntity);
                 } else if (isEntityCollectionField(field)) {
                     logger.debug("Setting lazy list for toMany related entities");
