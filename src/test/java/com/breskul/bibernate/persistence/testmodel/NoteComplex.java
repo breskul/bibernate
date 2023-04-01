@@ -1,16 +1,13 @@
 package com.breskul.bibernate.persistence.testmodel;
 
-import com.breskul.bibernate.annotation.Column;
-import com.breskul.bibernate.annotation.Entity;
-import com.breskul.bibernate.annotation.GeneratedValue;
-import com.breskul.bibernate.annotation.Id;
-import com.breskul.bibernate.annotation.JoinColumn;
-import com.breskul.bibernate.annotation.ManyToOne;
-import com.breskul.bibernate.annotation.Table;
+import com.breskul.bibernate.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.breskul.bibernate.annotation.Strategy.SEQUENCE;
 
@@ -18,7 +15,8 @@ import static com.breskul.bibernate.annotation.Strategy.SEQUENCE;
 @Data
 @Entity
 @Table(name = "notes")
-@EqualsAndHashCode(exclude = "person")
+@EqualsAndHashCode(exclude = {"companies"})
+@ToString(exclude = {"companies"})
 public class NoteComplex {
 
 	@Id
@@ -32,5 +30,13 @@ public class NoteComplex {
 	@ManyToOne
 	@JoinColumn(name = "person_id")
 	private Person person;
+
+	@OneToMany
+	private List<Company> companies = new ArrayList<>();
+
+	public void addCompany(Company company) {
+		company.setNoteComplex(this);
+		companies.add(company);
+	}
 
 }
