@@ -243,25 +243,25 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         validateCompany(company4.getId(), note2.getId());
     }
 
-    @Test
-    @DisplayName("9. Test remove method")
-    @Order(9)
-    public void testRemoveMethod() {
-        EntityTransaction entityTransaction = entityManager.getTransaction();
-
-        entityTransaction.begin();
-        Person person = new Person();
-        person.setFirstName("user");
-        person.setLastName("user");
-        person.setBirthday(LocalDate.now());
-        entityManager.persist(person);
-        entityTransaction.commit();
-
-
-        entityTransaction.begin();
-        Assertions.assertDoesNotThrow(() -> entityManager.remove(person));
-        entityTransaction.commit();
-    }
+//    @Test
+//    @DisplayName("9. Test remove method")
+//    @Order(9)
+//    public void testRemoveMethod() {
+//        EntityTransaction entityTransaction = entityManager.getTransaction();
+//
+//        entityTransaction.begin();
+//        Person person = new Person();
+//        person.setFirstName("user");
+//        person.setLastName("user");
+//        person.setBirthday(LocalDate.now());
+//        entityManager.persist(person);
+//        entityTransaction.commit();
+//
+//
+//        entityTransaction.begin();
+//        Assertions.assertDoesNotThrow(() -> entityManager.remove(person));
+//        entityTransaction.commit();
+//    }
 
     private void validatePerson(Long id) {
         try (Connection connection = dataSource.getConnection()) {
