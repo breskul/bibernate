@@ -11,25 +11,24 @@ import java.util.List;
 
 import static com.breskul.bibernate.annotation.Strategy.SEQUENCE;
 
-
-@Data
 @Entity
+@Data
 @Table(name = "notes")
 @EqualsAndHashCode(exclude = {"companies"})
 @ToString(exclude = {"companies"})
 public class NoteComplex {
 
-	@Id
-	@GeneratedValue(strategy = SEQUENCE)
-	private Long id;
-	private String body;
+    @Id
+    @GeneratedValue(strategy = SEQUENCE)
+    private Long id;
+    private String body;
 
-	@Column(name = "created_at")
-	private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-	@ManyToOne
-	@JoinColumn(name = "person_id")
-	private Person person;
+    @ManyToOne
+    @JoinColumn(name = "person_id")
+    private Person person;
 
 	@OneToMany
 	private List<Company> companies = new ArrayList<>();

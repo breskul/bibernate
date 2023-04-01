@@ -8,10 +8,16 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.function.Consumer;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public abstract class AbstractDataSourceTest {
+
+    public static final String CLEAN_PERSON_TABLE = "DELETE FROM users";
+    public static final String CLEAN_NOTE_TABLE = "DELETE FROM notes";
 
     protected DataSource dataSource;
     public static final String CLEAN_PERSON_TABLE = "DELETE FROM users";
@@ -24,4 +30,14 @@ public abstract class AbstractDataSourceTest {
         DataSourceFactory dataSourceFactory = DataSourceFactory.getInstance();
         dataSource = dataSourceFactory.getDataSource();
     }
+
+    public void doInConnection(Consumer<Connection> consumer) {
+        try (Connection connection = dataSource.getConnection()) {
+            consumer.accept(connection);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
 }
