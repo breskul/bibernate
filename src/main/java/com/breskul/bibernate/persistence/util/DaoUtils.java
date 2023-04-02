@@ -68,7 +68,7 @@ public class DaoUtils {
 
     }
 
-    private static String getString(Object entity, Field field) {
+    public static String getString(Object entity, Field field) {
         var value = getFieldValue(entity, field);
         if (Objects.isNull(value)) {
             return "null";
