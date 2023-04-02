@@ -33,6 +33,8 @@ The list of all features with code examples you can find in this guide.
         - [persist](#persist)
         - [remove](#remove)
         - [find](#find)
+        - [check status](#check-status)
+        - [close](#close)
     - [Entity Transaction](#entity-transaction)
         - [Create EntityTransaction](#create-entitytransaction)
         - [Begin new transaction](#begin-new-transaction)
@@ -41,6 +43,7 @@ The list of all features with code examples you can find in this guide.
         - [Check status transaction](#check-status-transaction)
         - [Set up rollback mode](#set-up-rollback-mode)
         - [Get status rollback mode](#get-status-rollback-mode)
+    - [First level cache](#first-level-cache)
     
 <!-- /TOC -->
 
@@ -104,6 +107,8 @@ public class DemoApp {
         entityManager.remove(selectedPerson);
         
         entityTransaction.commit();
+        
+        entityManager.close();
     }
 }
 ```
@@ -173,6 +178,21 @@ There are many features implemented in the project. All features are tested.
 > Person person = entityManager.find(Person.class, 1L);
 > ```
 
+##### Check status
+> To check status for EntityManger use this method: 
+> ###### <u>Returns</u>:
+> return boolean value 
+>
+> ```java
+> entityManager.isOpen();
+> ```
+
+##### Close
+> Close session and clear all resources
+> ```java
+> entityManager.close();
+> ```
+
 ### Entity Transaction
 
 Hibernate provide transaction mechanism.
@@ -213,6 +233,28 @@ and after operations need to make commit or rollback transaction
 ##### Get status rollback mode
 > ```java
 > entityTransaction.getRollbackOnly();
+> ```
+
+### First level cache
+>Bibernate provide first level cache.
+>Find, merge, persist, remove methods will update cache and help avoid additional calls to database.
+> ```java
+> entityManager.persist(person); - will add value to cache
+> ```
+> ```java
+> entityManager.find(Person.class, 1L); - will add value to cache
+> ```
+> ```java
+> entityManager.remove(person); - will remove value from cache
+> ```
+> ```java
+> entityManager.merge(person); - will update cache value
+> ```
+>```java
+> entityTransaction.rollback(); will clear first level cache
+> ```
+>```java
+> entityManager.close(); will clear first level cache
 > ```
 
 ## Our BRESKUL Team

@@ -1,6 +1,8 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
+import com.breskul.bibernate.exception.EntityManagerException;
+import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.testmodel.*;
@@ -12,6 +14,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -260,6 +263,22 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
+    @DisplayName("Test close EntityManager")
+    public void testCloseEntityManager() {
+        assertTrue(entityManager.isOpen());
+
+        entityManager.close();
+
+        assertFalse(entityManager.isOpen());
+
+        Person person = new Person();
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.find(Person.class, 1L));
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.remove(person));
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.persist(person));
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.merge(person));
+    }
+
+    @Test
     @DisplayName("Test remove method without transaction")
     public void removeMethodWithoutTransaction() {
         Person person = new Person();
@@ -272,10 +291,10 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @Test
     @DisplayName("Test remove method")
     public void removeMethodWithTransaction() {
-        Person person = new Person();
+        PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
+        person.setId(10L);
         person.setFirstName("firstName");
         person.setLastName("lastName");
-        person.setBirthday(BIRTHDAY);
 
         EntityTransaction entityTransaction = entityManager.getTransaction();
         entityTransaction.begin();
@@ -290,7 +309,9 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @Test
     @DisplayName("Test find method for Entity with OneToMany relation")
     public void testFindMethodWithOneToManyRelation() {
-        Person person = new Person();
+        long personId = 20L;
+        PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
+        person.setId(personId);
         person.setFirstName("Tom");
         person.setLastName("Hanks");
         var birthday = LocalDateTime.of(1956, Month.JULY, 9, 10, 0, 0).toLocalDate();
@@ -299,16 +320,16 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         EntityTransaction entityTransaction = entityManager.getTransaction();
         entityTransaction.begin();
 
-        assertNull(entityManager.find(PersonWithoutIdAndStrategy.class, person.getId()));
+        assertNull(entityManager.find(PersonWithoutIdAndStrategy.class, personId));
         entityManager.persist(person);
         assertNull(entityManager.find(Person.class, 10L));
-        assertDoesNotThrow(() -> entityManager.find(Person.class, person.getId()));
-        var selectedPerson = entityManager.find(Person.class, person.getId());
+        assertDoesNotThrow(() -> entityManager.find(Person.class, personId));
+        var selectedPerson = entityManager.find(Person.class, personId);
         assertEquals(person.getFirstName(), selectedPerson.getFirstName());
         assertEquals(person.getLastName(), selectedPerson.getLastName());
         assertEquals(person.getBirthday(), selectedPerson.getBirthday());
         assertDoesNotThrow(() -> entityManager.remove(selectedPerson));
-        assertNull(entityManager.find(Person.class, person.getId()));
+        assertNull(entityManager.find(Person.class, personId));
 
         entityTransaction.commit();
     }
@@ -319,29 +340,33 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         EntityTransaction entityTransaction = entityManager.getTransaction();
         entityTransaction.begin();
 
-        assertNull(entityManager.find(NoteComplex.class, 30L));
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 30L));
 
-        Person person = new Person();
+        PersonWithoutGeneratedValue person = new PersonWithoutGeneratedValue();
         person.setFirstName("Keanu");
         person.setLastName("Reeves");
+        person.setId(30L);
         person.setBirthday(LocalDateTime.of(1964, Month.SEPTEMBER, 2, 10, 0, 0).toLocalDate());
 
         entityManager.persist(person);
 
-        NoteComplex note = new NoteComplex();
+        NoteWithoutGeneratedValue note = new NoteWithoutGeneratedValue();
+        note.setId(30L);
         note.setBody("note");
         note.setPerson(person);
 
         entityManager.persist(note);
 
-        assertNotNull(entityManager.find(Person.class, person.getId()));
-        var selectedPerson = entityManager.find(Person.class, person.getId());
+        assertNull(entityManager.find(PersonWithoutGeneratedValue.class, 10L));
+        assertDoesNotThrow(() -> entityManager.find(PersonWithoutGeneratedValue.class, person.getId()));
+        var selectedPerson = entityManager.find(PersonWithoutGeneratedValue.class, person.getId());
         assertEquals(person.getFirstName(), selectedPerson.getFirstName());
         assertEquals(person.getLastName(), selectedPerson.getLastName());
         assertEquals(person.getBirthday(), selectedPerson.getBirthday());
 
-        assertNotNull(entityManager.find(NoteComplex.class, note.getId()));
-        var selectedNote = entityManager.find(NoteComplex.class, note.getId());
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 10L));
+        assertDoesNotThrow(() -> entityManager.find(NoteWithoutGeneratedValue.class, note.getId()));
+        var selectedNote = entityManager.find(NoteWithoutGeneratedValue.class, note.getId());
         assertEquals(note.getBody(), selectedNote.getBody());
         assertEquals(note.getPerson().getId(), selectedNote.getPerson().getId());
 
@@ -358,17 +383,17 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @DisplayName("Test find method for Entity with ManyToOne relation. Related Object is Null")
     public void testFindMethodWithManyToOneRelationRelatedObjectIsNull() {
         entityManager.getTransaction().begin();
-        assertNull(entityManager.find(NoteComplex.class, 33L));
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 33L));
 
-        NoteComplex note = new NoteComplex();
-        note.setBody(NOTE_BODY);
-        note.setCreatedAt(LocalDateTime.now());
+        NoteWithoutGeneratedValue note = new NoteWithoutGeneratedValue();
+        note.setId(33L);
+        note.setBody("a new note");
 
         entityManager.persist(note);
 
-        assertNotNull(entityManager.find(NoteComplex.class, note.getId()));
-
-        var selectedNote = entityManager.find(NoteComplex.class, note.getId());
+        assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 10L));
+        assertDoesNotThrow(() -> entityManager.find(NoteWithoutGeneratedValue.class, note.getId()));
+        var selectedNote = entityManager.find(NoteWithoutGeneratedValue.class, note.getId());
         assertNotNull(selectedNote);
         assertEquals(note.getBody(), selectedNote.getBody());
         assertNull(selectedNote.getPerson());

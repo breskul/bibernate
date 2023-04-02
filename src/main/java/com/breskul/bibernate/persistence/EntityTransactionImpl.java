@@ -7,6 +7,7 @@ import jakarta.persistence.EntityTransaction;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Map;
 
 /**
  * Interface used to control transactions on resource-local entity
@@ -16,15 +17,17 @@ import java.sql.SQLException;
  */
 public class EntityTransactionImpl implements EntityTransaction {
 
+    private final Map<EntityKey<?>, Object> cache;
     private final DataSource dataSource;
     private final JdbcDao jdbcDao;
     private Connection connection;
     private boolean isActive;
     private boolean isRollbackOnly;
 
-    public EntityTransactionImpl(DataSource dataSource, JdbcDao jdbcDao) {
+    public EntityTransactionImpl(DataSource dataSource, JdbcDao jdbcDao, Map<EntityKey<?>, Object> cache) {
         this.dataSource = dataSource;
         this.jdbcDao = jdbcDao;
+        this.cache = cache;
     }
 
     /**
@@ -84,6 +87,7 @@ public class EntityTransactionImpl implements EntityTransaction {
         try {
             connection.rollback();
             closeConnection();
+            cache.clear();
         } catch (SQLException exception) {
             throw new TransactionException("Can not rollback transaction", "Check db server health", exception);
         }
