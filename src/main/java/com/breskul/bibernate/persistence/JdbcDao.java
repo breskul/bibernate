@@ -54,27 +54,16 @@ public class JdbcDao {
                 id = getSequenceId(formattedSequenceQuery);
                 sqlFieldNames = identifierField.getName() + "," + sqlFieldNames;
                 sqlFieldValues = id + "," + sqlFieldValues;
-                identifierField.setAccessible(true);
-                try {
-                    identifierField.set(entity, id);
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
+                setIdentifierInEntity(entity, identifierField, id);
                 insertEntity(tableName, sqlFieldNames, sqlFieldValues);
             } else if (strategy.equals(Strategy.IDENTITY)){
                 id = insertEntity(tableName, sqlFieldNames, sqlFieldValues);
-                identifierField.setAccessible(true);
-                try {
-                    identifierField.set(entity, id);
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
+                setIdentifierInEntity(entity, identifierField, id);
             } else {
                 String idName = getIdentifierFieldName(entity.getClass());
                 id = getIdentifierValue(entity);
                 sqlFieldNames = idName + "," + sqlFieldNames;
                 sqlFieldValues = id + "," + sqlFieldValues;
-
                 insertEntity(tableName, sqlFieldNames, sqlFieldValues);
             }
             var entityKey = EntityKey.of(entity.getClass(), id);
@@ -83,6 +72,15 @@ public class JdbcDao {
 
         }
 
+    }
+
+    private static void setIdentifierInEntity(Object entity, Field identifierField, Object id) {
+        identifierField.setAccessible(true);
+        try {
+            identifierField.set(entity, id);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Node buildTree(Object entityToSave) {
