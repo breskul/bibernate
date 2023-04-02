@@ -5,7 +5,7 @@ import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
-import com.breskul.bibernate.persistence.util.Node;
+import com.breskul.bibernate.persistence.util.EntityToInsertNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +36,9 @@ public class JdbcDao {
     }
 
     public void persist(Object parentEntity) {
-        Node parentNode = buildTree(parentEntity);
-        var queue = new ArrayDeque<Node>();
-        queue.add(parentNode);
+        EntityToInsertNode parentEntityToInsertNode = buildTreeDependencyFromParentEntity(parentEntity);
+        var queue = new ArrayDeque<EntityToInsertNode>();
+        queue.add(parentEntityToInsertNode);
         while (!queue.isEmpty()) {
             var node = queue.poll();
             var entity = node.entity();
@@ -83,10 +83,10 @@ public class JdbcDao {
         }
     }
 
-    private Node buildTree(Object entityToSave) {
-        Node parentNode = new Node(entityToSave, new ArrayList<>());
-        var queue = new ArrayDeque<Node>();
-        queue.add(parentNode);
+    private EntityToInsertNode buildTreeDependencyFromParentEntity(Object entityToSave) {
+        EntityToInsertNode parentEntityToInsertNode = new EntityToInsertNode(entityToSave, new ArrayList<>());
+        var queue = new ArrayDeque<EntityToInsertNode>();
+        queue.add(parentEntityToInsertNode);
         while (!queue.isEmpty()) {
             var currentNode = queue.poll();
             var currentEntity = currentNode.entity();
@@ -96,14 +96,14 @@ public class JdbcDao {
                 if (DaoUtils.isCollectionField(collectionField)) {
                     var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
                     for (var childEntity : childEntities) {
-                        var newNode = new Node(childEntity, new ArrayList<>());
+                        var newNode = new EntityToInsertNode(childEntity, new ArrayList<>());
                         childes.add(newNode);
                         queue.add(newNode);
                     }
                 }
             }
         }
-        return parentNode;
+        return parentEntityToInsertNode;
     }
 
     public Long getSequenceId(String sequenceQuery) {
