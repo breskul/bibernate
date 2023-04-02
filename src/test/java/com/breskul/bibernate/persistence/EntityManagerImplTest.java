@@ -261,7 +261,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @Test
     @DisplayName("Test remove method without transaction")
     public void removeMethodWithoutTransaction() {
-        EntityManager entityManager = new EntityManagerImpl(dataSource);
         Person person = new Person();
         person.setId(10L);
         person.setFirstName("user");
