@@ -99,7 +99,7 @@ public class DaoUtils {
     }
 
     public static boolean isEntityField(Field field) {
-        return field.isAnnotationPresent(ManyToOne.class);
+        return field.isAnnotationPresent(ManyToOne.class) || field.isAnnotationPresent(OneToOne.class);
     }
 
     public static boolean isEntityCollectionField(Field field) {

@@ -1,7 +1,7 @@
 package com.breskul.bibernate.persistence.util;
 
 import com.breskul.bibernate.exception.DaoUtilsException;
-import com.breskul.bibernate.persistence.util.testModel.Note;
+import com.breskul.bibernate.persistence.util.test_model.Note;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.DisplayName;

@@ -74,7 +74,7 @@ db.password=test
 ```java
 import com.breskul.bibernate.configuration.PersistenceProperties;
 import com.breskul.bibernate.persistence.EntityManagerImpl;
-import com.breskul.bibernate.persistence.testmodel.Person;
+import com.breskul.bibernate.persistence.test_model.Person;
 import com.breskul.bibernate.repository.DataSourceFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;

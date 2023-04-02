@@ -2,7 +2,7 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.TransactionException;
-import com.breskul.bibernate.persistence.testmodel.*;
+import com.breskul.bibernate.persistence.test_model.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.*;

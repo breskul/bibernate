@@ -2,7 +2,7 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import com.breskul.bibernate.persistence.testmodel.*;
+import com.breskul.bibernate.persistence.test_model.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.AfterEach;
@@ -27,9 +27,9 @@ public class PersistTest extends AbstractDataSourceTest {
 	public static final String NOTE_BODY = "WOW, my brain is steaming!";
 	public static final String TABLE_NOT_FOUND_MESSAGE = "Table PersonWithoutTable not found - Use @Table annotation to specify table's name";
 	public static final String NO_SEQUENCE_MESSAGE = "Can't find sequence SELECT nextval('users_seq') - Make sure that sequence match the pattern 'tableName_seq'";
-	public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.testmodel.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
-	public static final String ID_AND_STRATEGY_MESSAGE = "detached entity passed to persist: com.breskul.bibernate.persistence.testmodel.PersonWithIdAndStrategy - Make sure that you don't set id manually when using @GeneratedValue";
-	public static final String WITHOUT_ID_AND_STRATEGY = "No id present for com.breskul.bibernate.persistence.testmodel.PersonWithoutIdAndStrategy - ids for this class must be manually assigned before calling save(): com.breskul.bibernate.persistence.testmodel.PersonWithoutIdAndStrategy";
+	public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.test_model.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
+	public static final String ID_AND_STRATEGY_MESSAGE = "detached entity passed to persist: com.breskul.bibernate.persistence.test_model.PersonWithIdAndStrategy - Make sure that you don't set id manually when using @GeneratedValue";
+	public static final String WITHOUT_ID_AND_STRATEGY = "No id present for com.breskul.bibernate.persistence.test_model.PersonWithoutIdAndStrategy - ids for this class must be manually assigned before calling save(): com.breskul.bibernate.persistence.test_model.PersonWithoutIdAndStrategy";
 	private EntityManager entityManager;
 
 	@BeforeEach
