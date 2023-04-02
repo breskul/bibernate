@@ -30,7 +30,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
 
     private EntityManager entityManager;
 
-    @BeforeEach
+    @BeforeAll
     void setUp() {
         entityManager = new EntityManagerImpl(dataSource);
     }
