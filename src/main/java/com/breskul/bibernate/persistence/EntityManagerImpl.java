@@ -107,7 +107,40 @@ public class EntityManagerImpl implements EntityManager {
     @Override
     public <T> T merge(T entity) {
         validateSession();
-        return null;
+        Object id = getIdentifierValue(entity);
+        Class<T> entityClass = (Class<T>) entity.getClass();
+        T newEntity;
+        if (cache.containsKey(new EntityKey<>(entityClass, id))) {
+            newEntity = entity;
+        } else {
+            newEntity = find(entityClass, id);
+            mergeEntities(newEntity, entity);
+        }
+        return newEntity;
+    }
+
+    private <T> void mergeEntities(T newEntity, T oldEntity) {
+        for (Field declaredField : newEntity.getClass().getDeclaredFields()) {
+            if (isRegularField(declaredField)) {
+                Object newEntityFieldValue = getFieldValue(newEntity, declaredField);
+                Object oldEntityFieldValue = getFieldValue(oldEntity, declaredField);
+                if (!newEntityFieldValue.equals(oldEntityFieldValue)) {
+                    setValueToField(newEntity, oldEntityFieldValue, declaredField);
+                }
+            } else if (isEntityCollectionField(declaredField)) {
+                Collection<Object> newEntityFieldValue = (Collection<Object>)getFieldValue(newEntity, declaredField);
+                Collection<?> oldEntityFieldValue = (Collection<?>)getFieldValue(oldEntity, declaredField);
+                newEntityFieldValue.clear();
+                // TODO: check if oldEntityFieldValue is LazyList then no merge required
+                for (Object element : oldEntityFieldValue){
+                    newEntityFieldValue.add(merge(element));
+                }
+            } else if (isEntityField(declaredField)) {
+                Object oldEntityFieldValue = getFieldValue(oldEntity, declaredField);
+                Object newEntityFieldValue = merge(oldEntityFieldValue);
+                setValueToField(newEntity, newEntityFieldValue, declaredField);
+            }
+        }
     }
 
     @Override

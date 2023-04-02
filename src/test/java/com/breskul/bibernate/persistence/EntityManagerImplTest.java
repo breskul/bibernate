@@ -10,6 +10,7 @@ import org.junit.jupiter.api.*;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 
@@ -183,4 +184,38 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         entityManager.getTransaction().commit();
     }
 
+    @Test
+    @DisplayName("Test merge method")
+    public void testMerge() {
+        entityManager.close();
+        Person unmanagedPerson = doInLocalEntityManagerReturning (em -> {
+            Person person = new Person();
+            person.setFirstName("Harry");
+            person.setLastName("Potter");
+            person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+            NoteComplex note1 = new NoteComplex();
+            note1.setBody("My name is Harry Potter");
+            person.addNote(note1);
+
+            NoteComplex note2 = new NoteComplex();
+            note2.setBody("Do you know anything about the Camber of Secret?");
+            person.addNote(note2);
+
+            em.persist(person);
+            return person;
+        });
+
+        unmanagedPerson.setFirstName("Ron");
+        unmanagedPerson.getNotes().get(0).setBody("My name is Ron");
+
+        doInLocalEntityManager(em -> {
+            Person managedPerson = em.merge(unmanagedPerson);
+
+            assertEquals("Ron", managedPerson.getFirstName());
+            assertEquals("My name is Ron", managedPerson.getNotes().get(0).getBody());
+
+        });
+
+    }
 }

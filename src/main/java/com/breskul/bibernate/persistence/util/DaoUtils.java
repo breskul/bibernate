@@ -122,8 +122,18 @@ public class DaoUtils {
                             .formatted(annotationClass.getSimpleName(), entityType.getSimpleName());
                     return new InternalException(cause, solution);
                 });
-        field.setAccessible(true);
+        setValueToField(entity, value, field);
+    }
+
+    /**
+     * Set value to the entity field
+     * @param entity
+     * @param value
+     * @param field
+     */
+    public static void setValueToField(Object entity, Object value, Field field) {
         try {
+            field.setAccessible(true);
             field.set(entity, value);
         } catch (IllegalAccessException e) {
             var cause = "Can not set value to field";

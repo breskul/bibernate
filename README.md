@@ -34,6 +34,7 @@ The list of all features with code examples you can find in this guide.
         - [remove](#remove)
         - [find](#find)
         - [check status](#check-status)
+        - [merge](#merge)
         - [close](#close)
     - [Entity Transaction](#entity-transaction)
         - [Create EntityTransaction](#create-entitytransaction)
@@ -185,6 +186,16 @@ There are many features implemented in the project. All features are tested.
 >
 > ```java
 > entityManager.isOpen();
+> ```
+
+##### merge
+> Merge the state of the given entity into the current persistence context.
+> ###### <u>Params</u>:
+> * entity – entity instance
+> ###### <u>Returns</u>:
+> the managed instance that the state was merged to
+> ```java
+> Person managedPerson = entityManager.merge(unmanagedPerson);
 > ```
 
 ##### Close
