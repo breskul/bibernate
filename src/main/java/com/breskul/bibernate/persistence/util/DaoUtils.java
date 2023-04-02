@@ -7,6 +7,7 @@ import com.breskul.bibernate.exception.JdbcDaoException;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -71,7 +72,7 @@ public class DaoUtils {
             if (fieldName != null && !fieldName.isEmpty()) {
                 return fieldName;
             }
-        } else if (field.isAnnotationPresent(JoinColumn.class)){
+        } else if (field.isAnnotationPresent(JoinColumn.class)) {
             String fieldName = field.getAnnotation(JoinColumn.class).name();
             if (fieldName != null && !fieldName.isEmpty()) {
                 return fieldName;
@@ -114,4 +115,10 @@ public class DaoUtils {
                         toEntityType.getSimpleName(), fromEntity.getSimpleName())));
     }
 
+    public static Class<?> getEntityCollectionElementType(Field field) {
+        var parameterizedType = (ParameterizedType) field.getGenericType();
+        var actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
+        var relatedEntityType = (Class<?>) actualTypeArgument;
+        return relatedEntityType;
+    }
 }

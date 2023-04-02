@@ -2,6 +2,7 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.annotation.GeneratedValue;
 import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
@@ -9,9 +10,7 @@ import com.breskul.bibernate.persistence.util.DaoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.*;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -198,8 +197,12 @@ public class JdbcDao {
                     field.set(entity, relatedEntity);
                 } else if (isEntityCollectionField(field)) {
                     logger.debug("Setting lazy list for toMany related entities");
-
-
+                    var relatedEntityType =  DaoUtils.getEntityCollectionElementType(field);
+                    var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
+                    var entityFieldInRelatedEntity = DaoUtils.getRelatedEntityField(entityType, relatedEntityType);
+                    var entityId = DaoUtils.getIdentifierValue(entity);
+                    var list = new LazyList<T>(() -> findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId));
+                    field.set(entity, list);
                 }
             }
         } catch (InstantiationException exception) {
@@ -214,4 +217,6 @@ public class JdbcDao {
         }
         return entity;
     }
+
+
 }
