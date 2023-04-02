@@ -50,7 +50,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
                 throw new RuntimeException(e);
             }
         });
-        entityManager.close();
     }
     @Test
     @Order(1)
