@@ -60,7 +60,8 @@ If you’re using Maven to build your project add the following to your pom.xml 
 
 ### Settings
 ##### Database settings
-The database settings should be input in `resources` folder in `persistence.properties` file
+The database settings configure using the properties file that should be in the `resources`.
+The default filename is `persistence.properties`, but the configuration could be loaded from the specified properties file.
 
 E.g.:
 ```properties
@@ -68,6 +69,18 @@ db.url=jdbc:postgresql://88.10.195.17:5432/postgres
 db.user=test
 db.password=test
 ```
+
+Use the `PersistenceProperties.initialize` method to load the configuration.
+
+- Load configuration from the default properties file:
+```java
+PersistenceProperties.initialize();
+```
+- Load configuration from the specified properties file:
+```java
+PersistenceProperties.initialize("test-configuration.properties");
+```
+
 
 ### Quick start
 
