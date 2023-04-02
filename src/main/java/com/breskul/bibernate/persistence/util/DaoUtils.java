@@ -4,14 +4,13 @@ import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.persistence.EntityKey;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -20,17 +19,13 @@ import java.util.stream.Collectors;
 public class DaoUtils {
     private DaoUtils() {
     }
-
-    public static boolean isSequenceStrategy(Object entity) {
+    public static Strategy getStrategy(Object entity) {
         var entityClass = entity.getClass();
-        var strategyOptional = Arrays.stream(entityClass.getDeclaredFields())
+        return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(GeneratedValue.class))
                 .findAny()
                 .map(field -> field.getAnnotation(GeneratedValue.class))
-                .map(GeneratedValue::strategy);
-        return strategyOptional
-                .orElseThrow(() -> new RuntimeException("Every entity should annotated with @GeneratedValue annotation"))
-                .equals(Strategy.SEQUENCE);
+                .map(GeneratedValue::strategy).orElse(Strategy.AUTO);
     }
 
     public static String getSqlFieldNames(Object entity) {
@@ -216,7 +211,7 @@ public class DaoUtils {
 
     }
 
-    public static <T> void isValidEntity(T entity) {
+    public static <T> void isValidEntity(T entity, Map<EntityKey<?>, Object> cache) {
         var type = entity.getClass();
         if (!type.isAnnotationPresent(Entity.class)) {
             throw new JdbcDaoException("%s is not a valid entity class".formatted(type.getName()), "@Entity annotation should be present");
@@ -229,14 +224,11 @@ public class DaoUtils {
         }
 
         Object id = getIdentifierValue(entity);
-        if (!Objects.isNull(id)) {
+        var strategy = getStrategy(entity);
+        if (!strategy.equals(Strategy.AUTO) && !Objects.isNull(id) && !cache.containsKey(EntityKey.of(entity.getClass(), id)) ) {
             throw new JdbcDaoException("detached entity is passed to persist", "Make sure that you don't set id manually when using @GeneratedValue");
         }
 
-        Field identifierField = getIdentifierField(entity.getClass());
-        if (!identifierField.isAnnotationPresent(GeneratedValue.class)) {
-            throw new JdbcDaoException("annotation GeneratedValue is not found", "mark class with the GeneratedValue annotation");
-        }
 
     }
 

@@ -1,5 +1,6 @@
 package com.breskul.bibernate.persistence;
 
+import com.breskul.bibernate.annotation.Strategy;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
@@ -21,12 +22,18 @@ import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 public class JdbcDao {
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDao.class);
-    private static final String CAUSE_SQL_EXCEPTION_PATTERN = "error occurred while executing 'SELECT BY %s' statement";
+
+    private Connection connection;
+    private final Map<EntityKey<?>, Object> cache;
+
+    private static final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
     private static final String DELETE_STATEMENT = "DELETE FROM %s WHERE %s = ?";
     private static final String INSERT_QUERY = "INSERT INTO %s (%s) VALUES (%s)";
     private static final String SELECT_SEQ_QUERY = "SELECT nextval('%s_seq')";
-    private final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
-    private Connection connection;
+
+    public JdbcDao(Map<EntityKey<?>, Object> cache) {
+        this.cache = cache;
+    }
 
     public void persist(Object parentEntity) {
         Node parentNode = buildTree(parentEntity);
@@ -40,19 +47,38 @@ public class JdbcDao {
             var sqlFieldValues = DaoUtils.getSqlFieldValues(entity);
 
             var identifierField = DaoUtils.getIdentifierField(entity.getClass());
-            if (isSequenceStrategy(entity)) {
+            var strategy = getStrategy(entity);
+            Object id;
+            if (strategy.equals(Strategy.SEQUENCE)) {
                 var formattedSequenceQuery = String.format(SELECT_SEQ_QUERY, tableName);
-                long id = getSequenceId(formattedSequenceQuery);
+                id = getSequenceId(formattedSequenceQuery);
                 sqlFieldNames = identifierField.getName() + "," + sqlFieldNames;
                 sqlFieldValues = id + "," + sqlFieldValues;
+                identifierField.setAccessible(true);
+                try {
+                    identifierField.set(entity, id);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+                insertEntity(tableName, sqlFieldNames, sqlFieldValues);
+            } else if (strategy.equals(Strategy.IDENTITY)){
+                id = insertEntity(tableName, sqlFieldNames, sqlFieldValues);
+                identifierField.setAccessible(true);
+                try {
+                    identifierField.set(entity, id);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                String idName = getIdentifierFieldName(entity.getClass());
+                id = getIdentifierValue(entity);
+                sqlFieldNames = idName + "," + sqlFieldNames;
+                sqlFieldValues = id + "," + sqlFieldValues;
+
+                insertEntity(tableName, sqlFieldNames, sqlFieldValues);
             }
-            long id = insertEntity(tableName, sqlFieldNames, sqlFieldValues);
-            identifierField.setAccessible(true);
-            try {
-                identifierField.set(entity, id);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
+            var entityKey = EntityKey.of(entity.getClass(), id);
+            cache.put(entityKey, entity);
             queue.addAll(node.childes());
 
         }
@@ -124,7 +150,7 @@ public class JdbcDao {
         var columnName = DaoUtils.getColumnName(field);
         String formattedDeleteStatement =
                 String.format(SELECT_FROM_TABLE_BY_COLUMN_STATEMENT, alias, tableName, alias, alias, columnName);
-        final var cause = String.format(CAUSE_SQL_EXCEPTION_PATTERN, columnName);
+        final var cause = String.format("Error occurred while executing 'SELECT BY %s' statement", columnName);
         var list = new ArrayList<T>();
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
             preparedStatement.setObject(1, columnValue);

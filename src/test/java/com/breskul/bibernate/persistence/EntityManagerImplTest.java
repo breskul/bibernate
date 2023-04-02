@@ -3,7 +3,6 @@ package com.breskul.bibernate.persistence;
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.EntityManagerException;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.testmodel.*;
 import jakarta.persistence.EntityManager;
@@ -14,7 +13,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -56,8 +54,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         this.entityManager.close();
     }
     @Test
-    @Order(1)
-    @DisplayName("1. Test no table annotation present")
+    @DisplayName("Test no table annotation present")
     void testValidateEntityNoTable() {
         PersonWithoutTable person = new PersonWithoutTable();
         person.setFirstName(FIRST_NAME);
@@ -68,8 +65,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
-    @DisplayName("2. Test sequence in database is not found")
-    @Order(2)
+    @DisplayName("Test sequence in database is not found")
     void testValidateEntityNoSequence() {
         PersonSequence person = new PersonSequence();
         person.setFirstName(FIRST_NAME);
@@ -79,8 +75,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
-    @DisplayName("3. Test no entity annotation present")
-    @Order(3)
+    @DisplayName("Test no entity annotation present")
     void testValidateEntityNoEntity() {
         PersonWithoutEntity person = new PersonWithoutEntity();
         person.setFirstName(FIRST_NAME);
@@ -91,8 +86,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
-    @DisplayName("4. Test entity already have an id")
-    @Order(4)
+    @DisplayName("Test entity already have an id")
     void testValidateEntityIdAlreadyPresent() {
         PersonWithIdAndStrategy person = new PersonWithIdAndStrategy();
         person.setId(1L);
@@ -104,20 +98,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
-    @DisplayName("5. Test entity does not have GeneratedValue")
-    @Order(5)
-    void testValidateEntityGeneratedValueIsNotPresent() {
-        PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
-        person.setFirstName(FIRST_NAME);
-        person.setLastName(LAST_NAME);
-        person.setBirthday(BIRTHDAY);
-        JdbcDaoException jdbcDaoException = assertThrows(JdbcDaoException.class, () -> entityManager.persist(person));
-        assertEquals(WITHOUT_ID_AND_STRATEGY, jdbcDaoException.getMessage());
-    }
-
-    @Test
-    @DisplayName("6. Insert person with note")
-    @Order(6)
+    @DisplayName("Insert person with note")
     void insertPersonWithNotes() {
 
         NoteComplex note = new NoteComplex();
@@ -136,9 +117,38 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         validatePerson(person.getId());
         validateNote(note.getId(), person.getId());
     }
+
+    private void validatePerson(Long id) {
+        try (Connection connection = dataSource.getConnection()) {
+            PreparedStatement preparedStatement = connection.prepareStatement(String.format("SELECT * FROM users where id = %d", id));
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            assertTrue(resultSet.next());
+            assertEquals(id, resultSet.getLong(1));
+            assertEquals(FIRST_NAME, resultSet.getString(2));
+            assertEquals(LAST_NAME, resultSet.getString(3));
+            assertEquals(BIRTHDAY, resultSet.getDate(4).toLocalDate());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void validateNote(Long id, Long parentId) {
+        try (Connection connection = dataSource.getConnection()) {
+            PreparedStatement preparedStatement = connection.prepareStatement(String.format("SELECT * FROM notes where id = %d", id));
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            assertTrue(resultSet.next());
+            assertEquals(id, resultSet.getLong(1));
+            assertEquals(NOTE_BODY, resultSet.getString(2));
+            assertEquals(parentId, resultSet.getLong(4));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
-    @DisplayName("7. Test insert one person with multiple notes")
-    @Order(7)
+    @DisplayName("Test insert one person with multiple notes")
     void testInsertOnlyPerson() {
         Person person = new Person();
         person.setFirstName(FIRST_NAME);
@@ -167,9 +177,8 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         validateNote(note3.getId(), person.getId());
     }
     @Test
-    @DisplayName("8. Test insert one person with multiple notes and multiple companies")
-    @Order(8)
-    public void testInsertPersonWithMultipleNotes(){
+    @DisplayName("Test insert one person with multiple notes and multiple companies")
+    public void testInsertPersonWithMultipleNotes() {
         Person person = new Person();
         person.setFirstName(FIRST_NAME);
         person.setLastName(LAST_NAME);
@@ -209,44 +218,14 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         entityTransaction.commit();
 
         validatePerson(person.getId());
-        validateNote(note1.getId(),person.getId());
-        validateNote(note2.getId(),person.getId());
+        validateNote(note1.getId(), person.getId());
+        validateNote(note2.getId(), person.getId());
 
         validateCompany(company1.getId(), note1.getId());
         validateCompany(company2.getId(), note1.getId());
 
         validateCompany(company3.getId(), note2.getId());
         validateCompany(company4.getId(), note2.getId());
-    }
-
-
-    private void validatePerson(Long id) {
-        try (Connection connection = dataSource.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement(String.format("SELECT * FROM users where id = %d", id));
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            assertTrue(resultSet.next());
-            assertEquals(id, resultSet.getLong(1));
-            assertEquals(FIRST_NAME, resultSet.getString(2));
-            assertEquals(LAST_NAME, resultSet.getString(3));
-            assertEquals(BIRTHDAY, resultSet.getDate(4).toLocalDate());
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void validateNote(Long id, Long parentId) {
-        try (Connection connection = dataSource.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement(String.format("SELECT * FROM notes where id = %d", id));
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            assertTrue(resultSet.next());
-            assertEquals(id, resultSet.getLong(1));
-            assertEquals(NOTE_BODY, resultSet.getString(2));
-            assertEquals(parentId, resultSet.getLong(4));
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private void validateCompany(Long id, Long parentId) {

@@ -40,7 +40,8 @@ public class EntityManagerImpl implements EntityManager {
     }
 
     public void persist(Object entity) {
-        isValidEntity(entity);
+        validateSession();
+        isValidEntity(entity, cache);
         this.jdbcDao.persist(entity);
     }
 
