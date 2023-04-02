@@ -2,7 +2,6 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.TransactionException;
-import com.breskul.bibernate.persistence.testmodel.Person;
 import com.breskul.bibernate.persistence.testmodel.PersonWithoutIdAndStrategy;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
@@ -60,7 +59,8 @@ public class EntityTransactionImplTest extends AbstractDataSourceTest {
         entityTransaction.begin();
         assertTrue(entityTransaction.isActive());
 
-        Person person = new Person();
+        PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
+        person.setId(101L);
         person.setFirstName("FirstName");
         person.setLastName("LastName");
 
@@ -70,7 +70,7 @@ public class EntityTransactionImplTest extends AbstractDataSourceTest {
         assertFalse(entityTransaction.isActive());
 
         entityTransaction.begin();
-        Person selectedPerson = entityManager.find(Person.class, person.getId());
+        PersonWithoutIdAndStrategy selectedPerson = entityManager.find(PersonWithoutIdAndStrategy.class, person.getId());
         entityTransaction.commit();
         assertTrue(person.equals(selectedPerson));
     }
@@ -87,7 +87,8 @@ public class EntityTransactionImplTest extends AbstractDataSourceTest {
         entityTransaction.setRollbackOnly();
         assertTrue(entityTransaction.getRollbackOnly());
 
-        Person person = new Person();
+        PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
+        person.setId(101L);
         person.setFirstName("FirstName");
         person.setLastName("LastName");
 
@@ -97,7 +98,7 @@ public class EntityTransactionImplTest extends AbstractDataSourceTest {
         assertFalse(entityTransaction.isActive());
 
         entityTransaction.begin();
-        assertNull(entityManager.find(Person.class, person.getId()));
+        assertNull(entityManager.find(PersonWithoutIdAndStrategy.class, person.getId()));
         entityTransaction.commit();
     }
 
@@ -105,7 +106,8 @@ public class EntityTransactionImplTest extends AbstractDataSourceTest {
     public void rollback() {
         entityTransaction.begin();
 
-        Person person = new Person();
+        PersonWithoutIdAndStrategy person = new PersonWithoutIdAndStrategy();
+        person.setId(101L);
         person.setFirstName("FirstName");
         person.setLastName("LastName");
 
@@ -115,7 +117,7 @@ public class EntityTransactionImplTest extends AbstractDataSourceTest {
         assertFalse(entityTransaction.isActive());
 
         entityTransaction.begin();
-        assertNull(entityManager.find(Person.class, person.getId()));
+        assertNull(entityManager.find(PersonWithoutIdAndStrategy.class, person.getId()));
         entityTransaction.commit();
     }
 
