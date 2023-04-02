@@ -3,8 +3,10 @@ package com.breskul.bibernate.persistence;
 import com.breskul.bibernate.annotation.Id;
 import com.breskul.bibernate.annotation.JoinColumn;
 import com.breskul.bibernate.annotation.ManyToOne;
+import com.breskul.bibernate.exception.EntityManagerException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.TransactionException;
+import com.breskul.bibernate.persistence.util.CacheUtils;
 import com.breskul.bibernate.persistence.util.DaoUtils;
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -16,6 +18,7 @@ import jakarta.persistence.metamodel.Metamodel;
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.function.Supplier;
 
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
@@ -24,21 +27,33 @@ public class EntityManagerImpl implements EntityManager {
     private final JdbcDao jdbcDao;
 
     private transient EntityTransactionImpl entityTransaction;
+    private final Map<EntityKey<?>, Object> cache = new HashMap<>();
+
+    private boolean isOpen;
 
     public EntityManagerImpl(DataSource dataSource) {
         this.dataSource = dataSource;
-        this.jdbcDao = new JdbcDao();
+        this.jdbcDao = new JdbcDao(cache);
+        this.isOpen = true;
+    }
+
+    private void validateSession() {
+        if (!this.isOpen) {
+            throw new EntityManagerException("Entity manager closed", "Need to create new EntityManager instance");
+        }
     }
 
     @Override
     public void persist(Object entityToSave) {
+        validateSession();
         isValidEntity(entityToSave.getClass());
         List<String> columns = new ArrayList<>();
         List<Object> values = new ArrayList<>();
         Queue<Collection<?>> queue = new ArrayDeque<>();
-        for (Field declaredField : entityToSave.getClass().getDeclaredFields()) {
+        Class<?> entityType = entityToSave.getClass();
+        for (Field declaredField : entityType.getDeclaredFields()) {
             if (declaredField.isAnnotationPresent(Id.class)) {
-                Field idField = getFieldByAnnotation(entityToSave.getClass(), Id.class);
+                Field idField = getFieldByAnnotation(entityType, Id.class);
                 Object entityId = jdbcDao.resolveEntityId(entityToSave, idField);
                 if (entityId != null) {
                     processRegularField(columns, values, idField, entityId);
@@ -75,12 +90,13 @@ public class EntityManagerImpl implements EntityManager {
     }
 
     private void processEntityField(List<String> columns, List<Object> values, Field declaredField, Object fieldValue) {
-        Object relatedEntity = JdbcDao.ENTITY_ID_MAP.get(fieldValue);
-        if (relatedEntity != null) {
+        if (fieldValue != null) {
             JoinColumn annotation = declaredField.getAnnotation(JoinColumn.class);
             String name = annotation.name();
             columns.add(name);
-            values.add(relatedEntity);
+
+            Object id = getIdentifierValue(fieldValue);
+            values.add(id);
         } else {
             if (!declaredField.getAnnotation(ManyToOne.class).optional()) {
                 throw new JdbcDaoException("Can't use transient entity here", "Make sure not to use transient entity in session");
@@ -88,24 +104,31 @@ public class EntityManagerImpl implements EntityManager {
         }
     }
 
-
     @Override
     public <T> T merge(T entity) {
+        validateSession();
         return null;
     }
 
     @Override
     public void remove(Object entity) {
+        validateSession();
         String tableName = DaoUtils.getClassTableName(entity.getClass());
         String identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
         Object identifierValue = DaoUtils.getIdentifierValue(entity);
         this.jdbcDao.deleteByIdentifier(tableName, identifierName, identifierValue);
+        EntityKey<?> entityKey = EntityKey.of(entity.getClass(), identifierValue);
+        cache.remove(entityKey);
     }
 
     @Override
     public <T> T find(Class<T> entityClass, Object primaryKey) {
+        validateSession();
         String tableName = DaoUtils.getClassTableName(entityClass);
-        return jdbcDao.findByIdentifier(entityClass, tableName, primaryKey);
+        Supplier<?> fetchSupplier = () -> jdbcDao.findByIdentifier(entityClass, tableName, primaryKey);
+        EntityKey<?> entityKey = EntityKey.of(entityClass, primaryKey);
+        Object result = CacheUtils.processCache(entityKey, cache, fetchSupplier);
+        return entityClass.cast(result);
     }
 
     @Override
@@ -295,12 +318,13 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public void close() {
-
+        cache.clear();
+        this.isOpen = false;
     }
 
     @Override
     public boolean isOpen() {
-        return false;
+        return isOpen;
     }
 
     /**
@@ -311,12 +335,13 @@ public class EntityManagerImpl implements EntityManager {
      **/
     @Override
     public EntityTransaction getTransaction() {
+        validateSession();
         return accessTransaction();
     }
 
-    public EntityTransaction accessTransaction() {
+    private EntityTransaction accessTransaction() {
         if (this.entityTransaction == null) {
-            this.entityTransaction = new EntityTransactionImpl(this.dataSource, this.jdbcDao);
+            this.entityTransaction = new EntityTransactionImpl(this.dataSource, this.jdbcDao, cache);
         }
         return this.entityTransaction;
     }

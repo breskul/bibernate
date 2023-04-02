@@ -1,6 +1,7 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
+import com.breskul.bibernate.exception.EntityManagerException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.testmodel.*;
 import jakarta.persistence.EntityManager;
@@ -37,6 +38,22 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
             }
         });
         entityManager.close();
+    }
+
+    @Test
+    @DisplayName("Test close EntityManager")
+    public void testCloseEntityManager() {
+        assertTrue(entityManager.isOpen());
+
+        entityManager.close();
+
+        assertFalse(entityManager.isOpen());
+
+        Person person = new Person();
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.find(Person.class, 1L));
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.remove(person));
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.persist(person));
+        Assertions.assertThrows(EntityManagerException.class, () -> entityManager.merge(person));
     }
 
     @Test
@@ -145,7 +162,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @DisplayName("Test find method for Entity with ManyToOne relation. Related Object is Null")
     public void testFindMethodWithManyToOneRelationRelatedObjectIsNull() {
         entityManager.getTransaction().begin();
-        NoteWithoutGeneratedValue noteWithoutGeneratedValue = entityManager.find(NoteWithoutGeneratedValue.class, 33L);
         assertNull(entityManager.find(NoteWithoutGeneratedValue.class, 33L));
 
         NoteWithoutGeneratedValue note = new NoteWithoutGeneratedValue();

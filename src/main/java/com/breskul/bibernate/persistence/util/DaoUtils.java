@@ -10,6 +10,9 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Optional;
 
+/**
+ * Reflection utils methods
+ */
 public class DaoUtils {
     private DaoUtils() {
     }
@@ -102,16 +105,35 @@ public class DaoUtils {
         return field.isAnnotationPresent(ManyToOne.class);
     }
 
-    public static boolean isEntityCollectionField(Field field) {
-        return field.isAnnotationPresent(OneToMany.class);
+    /**
+     * This method set value to field mapped by accepted annotation
+     * @param entity
+     * @param value
+     * @param annotationClass
+     **/
+    public static void setValueToField(Object entity, Object value, Class<? extends Annotation> annotationClass) {
+        var entityType = entity.getClass();
+        Field field = Arrays.stream(entityType.getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(annotationClass))
+                .findFirst()
+                .orElseThrow(() -> {
+                    var cause = "Can not find field with annotation name: " + annotationClass.getSimpleName();
+                    var solution = "Apply %s annotation to entity %s"
+                            .formatted(annotationClass.getSimpleName(), entityType.getSimpleName());
+                    return new InternalException(cause, solution);
+                });
+        field.setAccessible(true);
+        try {
+            field.set(entity, value);
+        } catch (IllegalAccessException e) {
+            var cause = "Can not set value to field";
+            var solution = "Check correctness type for injected value to field";
+            throw new InternalException(cause, solution, e);
+        }
     }
 
-    public static <T> Field getRelatedEntityField(Class<T> fromEntity, Class<?> toEntityType) {
-        return Arrays.stream(toEntityType.getDeclaredFields())
-                .filter(f -> f.getType().equals(fromEntity))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(String.format("Cannon find related field between in '%s' fro '%s'",
-                        toEntityType.getSimpleName(), fromEntity.getSimpleName())));
+    public static boolean isEntityCollectionField(Field field) {
+        return field.isAnnotationPresent(OneToMany.class);
     }
 
 }
