@@ -30,62 +30,9 @@ public class EntityManagerImpl implements EntityManager {
         this.jdbcDao = new JdbcDao();
     }
 
-    @Override
-    public void persist(Object entityToSave) {
-        isValidEntity(entityToSave.getClass());
-        List<String> columns = new ArrayList<>();
-        List<Object> values = new ArrayList<>();
-        Queue<Collection<?>> queue = new ArrayDeque<>();
-        for (Field declaredField : entityToSave.getClass().getDeclaredFields()) {
-            if (declaredField.isAnnotationPresent(Id.class)) {
-                Field idField = getFieldByAnnotation(entityToSave.getClass(), Id.class);
-                Object entityId = jdbcDao.resolveEntityId(entityToSave, idField);
-                if (entityId != null) {
-                    processRegularField(columns, values, idField, entityId);
-                }
-            } else {
-                Object fieldValue = getFieldValue(entityToSave, declaredField);
-                if (isRegularField(declaredField)) {
-                    processRegularField(columns, values, declaredField, fieldValue);
-                } else if (isEntityCollectionField(declaredField)) {
-                    processCollection(queue, fieldValue);
-                } else if (isEntityField(declaredField)) {
-                    processEntityField(columns, values, declaredField, fieldValue);
-                }
-            }
-        }
-
-        jdbcDao.executeInsert(entityToSave, values, columns);
-        processActionQueue(queue);
-    }
-
-    private void processActionQueue(Queue<Collection<?>> queue) {
-        queue.forEach(collection -> collection.forEach(this::persist));
-    }
-
-    private void processRegularField(List<String> columns, List<Object> values, Field declaredField, Object fieldValue) {
-        columns.add(resolveFieldName(declaredField));
-        values.add(fieldValue);
-    }
-
-    private void processCollection(Queue<Collection<?>> queue, Object fieldValue) {
-        if (fieldValue != null) {
-            queue.add((Collection<?>) fieldValue);
-        }
-    }
-
-    private void processEntityField(List<String> columns, List<Object> values, Field declaredField, Object fieldValue) {
-        Object relatedEntity = JdbcDao.ENTITY_ID_MAP.get(fieldValue);
-        if (relatedEntity != null) {
-            JoinColumn annotation = declaredField.getAnnotation(JoinColumn.class);
-            String name = annotation.name();
-            columns.add(name);
-            values.add(relatedEntity);
-        } else {
-            if (!declaredField.getAnnotation(ManyToOne.class).optional()) {
-                throw new JdbcDaoException("Can't use transient entity here", "Make sure not to use transient entity in session");
-            }
-        }
+    public void persist(Object entity) {
+        isValidEntity(entity);
+        this.jdbcDao.persist(entity);
     }
 
 
