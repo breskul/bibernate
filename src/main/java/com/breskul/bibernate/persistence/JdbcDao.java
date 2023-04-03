@@ -106,11 +106,11 @@ public class JdbcDao {
         return parentEntityToInsertNode;
     }
 
-    public Long getSequenceId(String sequenceQuery) {
+    public Object getSequenceId(String sequenceQuery) {
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(sequenceQuery)) {
             ResultSet resultSet = preparedStatement.executeQuery();
             resultSet.next();
-            return resultSet.getLong(1);
+            return resultSet.getObject(1);
         } catch (SQLException e) {
             throw new JdbcDaoException("Can't execute query %s".formatted(sequenceQuery), "Make sure that sequence match the pattern 'tableName_seq'", e);
         }
