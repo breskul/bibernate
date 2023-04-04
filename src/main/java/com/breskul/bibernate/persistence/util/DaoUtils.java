@@ -301,9 +301,10 @@ public class DaoUtils {
 
     /**
      * Set value to the entity field
-     * @param entity
-     * @param value
-     * @param field
+     * @param entity {@link Object} the entity object to set the field value for
+     * @param value {@link Object} the value to be set to the field
+     * @param field entity field
+     * @throws InternalException if the field cannot be accessed or set
      */
     public static void setValueToField(Object entity, Object value, Field field) {
         try {

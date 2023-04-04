@@ -10,6 +10,7 @@ import jakarta.persistence.Column;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -39,8 +40,8 @@ class DaoUtilsTest {
     }
 
     @Test
-    @DisplayName("Test setValueToField")
-    void testSetValueToField() {
+    @DisplayName("Test setValueToField with Id annotation")
+    void testSetValueToFieldWithIdAnnotation() {
         SetValueTest setValueTest = new SetValueTest();
         Long id = 1L;
         assertNull(setValueTest.getId());
@@ -56,6 +57,19 @@ class DaoUtilsTest {
         SetValueTest setValueTest = new SetValueTest();
         Long id = 1L;
         assertThrows(InternalException.class, () -> DaoUtils.setValueToField(setValueTest, id, Column.class));
+    }
+
+    @Test
+    @DisplayName("Test setValueToField with passed Field to set")
+    void testSetValueToFieldWithFieldPasses() throws NoSuchFieldException {
+        SetValueTest setValueTest = new SetValueTest();
+        Long id = 1L;
+        assertNull(setValueTest.getId());
+
+        Field field = setValueTest.getClass().getDeclaredField("id");
+        DaoUtils.setValueToField(setValueTest, id, field);
+
+        assertEquals(id, setValueTest.getId());
     }
 
     @Test
