@@ -27,7 +27,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     public static final String TABLE_NOT_FOUND_MESSAGE = "entity is not marked with @Table annotation - mark entity with table annotation";
     public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.testmodel.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
     public static final String ID_AND_STRATEGY_MESSAGE = "detached entity is passed to persist - Make sure that you don't set id manually when using @GeneratedValue";
-    public static final String WITHOUT_ID_AND_STRATEGY = "annotation GeneratedValue is not found - mark class with the GeneratedValue annotation";
 
     private EntityManager entityManager;
 
@@ -386,7 +385,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     @Test
     @DisplayName("Test merge method")
     public void testMerge() {
-        entityManager.close();
         Person unmanagedPerson = doInLocalEntityManagerReturning (em -> {
             Person person = new Person();
             person.setFirstName("Harry");
