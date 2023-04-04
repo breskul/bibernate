@@ -69,18 +69,13 @@ public class EntityManagerImpl implements EntityManager {
     }
     /**
      * <p>Removes the given entity from the database. This method first validates the session.</p>
-     * <p> Then gets the table name, identifier name, and identifier value of the entity using the DaoUtils class,and finally calls the {@link JdbcDao#deleteByIdentifier} method of the jdbcDao field to execute the SQL query. The entity is also removed from the cache.</p>
+     * <p> Then removes entity itself. The entity is also removed from the cache.</p>
      * @param entity {@link Object} - entity to be removed
      */
     @Override
     public void remove(Object entity) {
         validateSession();
-        String tableName = DaoUtils.getClassTableName(entity.getClass());
-        String identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
-        Object identifierValue = DaoUtils.getIdentifierValue(entity);
-        this.jdbcDao.deleteByIdentifier(tableName, identifierName, identifierValue);
-        EntityKey<?> entityKey = EntityKey.of(entity.getClass(), identifierValue);
-        cache.remove(entityKey);
+        this.jdbcDao.remove(entity, cache);
     }
     /**
      * <p>Finds the entity with the given primary key in the database. This method first validates the session, then gets the table name and a supplier that fetches the entity from the database using the jdbcDao field and the CacheUtils class.</p>

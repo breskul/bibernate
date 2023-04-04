@@ -185,6 +185,16 @@ public class DaoUtils {
                 .orElseThrow(() -> new DaoUtilsException(cause, solution));
     }
     /**
+     * <p>returns a List of Field objects that have the {@link CascadeType#ALL} or {@link CascadeType#REMOVE} cascade type specified on their @OneToMany</p>
+     * @param entityClass - {@link Class}
+     * @return {@link List} of {@link Field} list of field that have cascade described above
+     */
+    public static List<Field> getCascadeAllOrRemoveListFields(Class<?> entityClass) {
+        var list = getCollectionFields(entityClass);
+        return list.stream().filter(DaoUtils::isFieldAllOrRemoveCascade).toList();
+    }
+
+    /**
      * <p>Gets a list of collection fields from an entity class.</p>
      *
      * @param entityClass {@link Class} the entity class to get the collection fields from
@@ -195,7 +205,17 @@ public class DaoUtils {
                 .filter(field -> field.isAnnotationPresent(OneToMany.class))
                 .toList();
     }
-
+    private static CascadeType getCascadeType(Field field) {
+        var cause = "OneToMany annotation does not have CascadeType";
+        var solution = "annotate field with OneToMany annotation and put CascadeType on it";
+        return Optional.ofNullable(field.getAnnotation(OneToMany.class))
+                .orElseThrow(() -> new JdbcDaoException(cause, solution))
+                .cascade();
+    }
+    private static boolean isFieldAllOrRemoveCascade(Field field){
+        var cascadeType = getCascadeType(field);
+        return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
+    }
     /**
      * <p>Gets the name of the identifier field of an entity class.</p>
      *
