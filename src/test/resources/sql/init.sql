@@ -16,3 +16,12 @@ CREATE TABLE notes
 );
 
 CREATE SEQUENCE notes_seq;
+
+CREATE TABLE companies
+(
+    id         BIGINT                                 NOT NULL PRIMARY KEY,
+    name       VARCHAR(255)                           NOT NULL,
+    note_id  BIGINT
+        CONSTRAINT notes_FK references notes (id)
+);
+CREATE SEQUENCE companies_seq;

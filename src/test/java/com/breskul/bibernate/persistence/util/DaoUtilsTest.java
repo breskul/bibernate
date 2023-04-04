@@ -1,17 +1,19 @@
 package com.breskul.bibernate.persistence.util;
 
+import com.breskul.bibernate.annotation.GeneratedValue;
 import com.breskul.bibernate.annotation.Id;
+import com.breskul.bibernate.annotation.Strategy;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
-import com.breskul.bibernate.persistence.util.testModel.Note;
-import com.breskul.bibernate.persistence.util.testModel.SetValueTest;
+import com.breskul.bibernate.persistence.util.testModel.*;
 import jakarta.persistence.Column;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class DaoUtilsTest {
 
@@ -63,4 +65,141 @@ class DaoUtilsTest {
         String id = "test";
         assertThrows(IllegalArgumentException.class, () -> DaoUtils.setValueToField(setValueTest, id, Id.class));
     }
+    @Test
+    @DisplayName("Test strategy AUTO is detected")
+    void testGetStrategyAuto() {
+        class Entity {
+            private Long id;
+            private String name;
+        }
+        var entity = new Entity();
+        var strategy = DaoUtils.getStrategy(entity);
+        assertEquals(Strategy.AUTO, strategy);
+    }
+
+    @Test
+    @DisplayName("Test strategy IDENTITY is detected")
+    void testGetStrategyIdentity() {
+        class Entity {
+            @GeneratedValue(strategy = Strategy.IDENTITY)
+            private Long id;
+            private String name;
+        }
+        var entity = new Entity();
+        var strategy = DaoUtils.getStrategy(entity);
+        assertEquals(Strategy.IDENTITY, strategy);
+    }
+
+    @Test
+    @DisplayName("Test strategy SEQUENCE is detected")
+    void testGetStrategySequence() {
+        class Entity {
+            @GeneratedValue(strategy = Strategy.SEQUENCE)
+            private Long id;
+            private String name;
+        }
+        var entity = new Entity();
+        var strategy = DaoUtils.getStrategy(entity);
+        assertEquals(Strategy.SEQUENCE, strategy);
+    }
+
+    @Test
+    @DisplayName("Test GetSqlFieldNames with SEQUENCE")
+    void testGetSqlFieldNamesSequence() {
+        var entity = new EntitySequence();
+        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        assertEquals("name,age", sqlFieldNames);
+    }
+
+    @Test
+    @DisplayName("Test GetSqlFieldNames with IDENTITY")
+    void testGetSqlFieldNamesIdentity() {
+        var entity = new EntityIdentity();
+        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        assertEquals("name,age", sqlFieldNames);
+    }
+
+
+    @Test
+    @DisplayName("Test get sql field names with AUTO")
+    void testGetSqlFieldNamesAuto() {
+        var entity = new EntityAuto();
+        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        assertEquals("name,age", sqlFieldNames);
+    }
+
+    @Test
+    @DisplayName("Test get string with null value")
+    void testGetStringWithNullValue() throws Exception {
+        class Entity {
+            private String name;
+        }
+        var entity = new Entity();
+        var field = entity.getClass().getDeclaredField("name");
+        var result = DaoUtils.getString(entity, field);
+        assertEquals("null", result);
+    }
+
+    @Test
+    @DisplayName("Test get string with string value")
+    void testGetStringWithStringValue() throws Exception {
+        class Entity {
+            private String name = "John";
+        }
+        var entity = new Entity();
+        var field = entity.getClass().getDeclaredField("name");
+        var result = DaoUtils.getString(entity, field);
+        assertEquals("'John'", result);
+    }
+
+    @Test
+    @DisplayName("Test get string with string value")
+    void testGetStringWithLocalDateValue() throws Exception {
+        class Entity {
+            private LocalDate birthDate = LocalDate.of(1990, 1, 1);
+        }
+        var entity = new Entity();
+        var field = entity.getClass().getDeclaredField("birthDate");
+        var result = DaoUtils.getString(entity, field);
+        assertEquals("'1990-01-01'", result);
+    }
+
+    @Test
+    @DisplayName("Test get string with localDateTime value")
+    void testGetStringWithLocalDateTimeValue() throws Exception {
+        class Entity {
+            private LocalDateTime updatedAt = LocalDateTime.of(2022, 4, 2, 12, 0);
+        }
+        var entity = new Entity();
+        var field = entity.getClass().getDeclaredField("updatedAt");
+        var result = DaoUtils.getString(entity, field);
+        assertEquals("'2022-04-02T12:00'", result);
+    }
+
+    @Test
+    @DisplayName("Test get string with number value")
+    void testGetStringWithNumberValue() throws Exception {
+        class Entity {
+            private Integer age = 30;
+        }
+        var entity = new Entity();
+        var field = entity.getClass().getDeclaredField("age");
+        var result = DaoUtils.getString(entity, field);
+        assertEquals("30", result);
+    }
+
+    @Test
+    @DisplayName("Test get field value")
+    void testGetFieldValue() throws Exception {
+        class Entity {
+            private String name = "John";
+        }
+        var entity = new Entity();
+        var field = entity.getClass().getDeclaredField("name");
+        var result = DaoUtils.getFieldValue(entity, field);
+        assertEquals("John", result);
+    }
+
+
+
 }

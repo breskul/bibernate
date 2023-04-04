@@ -20,6 +20,7 @@ public abstract class AbstractDataSourceTest {
     public static final String CLEAN_PERSON_TABLE = "DELETE FROM users";
     public static final String CLEAN_NOTE_TABLE = "DELETE FROM notes";
 
+    public static final String CLEAN_COMPANY_TABLE = "DELETE FROM companies";
     protected DataSource dataSource;
 
     @BeforeAll
