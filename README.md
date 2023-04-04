@@ -90,7 +90,7 @@ PersistenceProperties.initialize("test-configuration.properties");
 ```java
 import com.breskul.bibernate.configuration.PersistenceProperties;
 import com.breskul.bibernate.persistence.EntityManagerImpl;
-import com.breskul.bibernate.persistence.testmodel.Person;
+import com.breskul.bibernate.persistence.test_model.Person;
 import com.breskul.bibernate.repository.DataSourceFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
@@ -143,12 +143,28 @@ public class DemoApp {
   `HikariCP`        	      |  `5.0.1`                            
   `lombok`        	          |  `1.18.24`                          
   `log4j-core`        	      |  `2.7`
+  `JUnit`                     |  `5.9.2`
 
 
 ## Entity Mapping
 ##### @OneToOne
+> Specifies a single-valued association to another entity class that has many-to-one multiplicity.
+> Has `optional` parameter which shows whether the association is optional. 
+> If it set to false then a non-null relationship must always exist.
+> His parameter is `true` by default.
+
 ##### @OneToMany
+> Specifies a many-valued association with one-to-many multiplicity
+> Has `fetch` parameter which shoes whether the association should be lazily loaded or must be eagerly fetched. The 
+> EAGER strategy is a requirement on the persistence provider runtime that the associated entities must be eagerly fetched. 
+> The LAZY strategy is a hint to the persistence provider runtime.
+> His parameter is `FetchType.LAZY` by default.
+
 ##### @ManyToOne
+> Specifies a single-valued association to another entity class that has many-to-one multiplicity
+> Has `optional` parameter which shows whether the association is optional.
+> If it set to false then a non-null relationship must always exist.
+> His parameter is `true` by default.
 
 
 ## Feature list
