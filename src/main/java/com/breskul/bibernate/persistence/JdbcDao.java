@@ -1,12 +1,12 @@
 package com.breskul.bibernate.persistence;
 
-import com.breskul.bibernate.annotation.GeneratedValue;
 import com.breskul.bibernate.annotation.Strategy;
 import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
+import com.breskul.bibernate.persistence.util.EntityToInsertNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,18 +21,109 @@ import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 public class JdbcDao {
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDao.class);
-    private static final String CAUSE_SQL_EXCEPTION_PATTERN = "error occurred while executing 'SELECT BY %s' statement";
+
     private Connection connection;
-    private final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
+    private final Map<EntityKey<?>, Object> cache;
+
+    private static final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
     private static final String DELETE_STATEMENT = "DELETE FROM %s WHERE %s = ?";
     private static final String INSERT_QUERY = "INSERT INTO %s (%s) VALUES (%s)";
     private static final String SELECT_SEQ_QUERY = "SELECT nextval('%s_seq')";
-    protected static final Map<Object, Object> ENTITY_ID_MAP = new HashMap<>();
-    private static final String H2_TABLE_NOT_FOUND_STATE = "42S02";
-    private static final String POSTGRES_TABLE_NOT_FOUND_STATE = "42P01";
 
-    public void setConnection(Connection connection) {
-        this.connection = connection;
+    public JdbcDao(Map<EntityKey<?>, Object> cache) {
+        this.cache = cache;
+    }
+
+    public void persist(Object parentEntity) {
+        EntityToInsertNode parentEntityToInsertNode = buildTreeDependencyFromParentEntity(parentEntity);
+        var queue = new ArrayDeque<EntityToInsertNode>();
+        queue.add(parentEntityToInsertNode);
+        while (!queue.isEmpty()) {
+            var node = queue.poll();
+            var entity = node.entity();
+            var tableName = DaoUtils.resolveTableName(entity);
+            var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+            var sqlFieldValues = DaoUtils.getSqlFieldValues(entity);
+
+            var identifierField = DaoUtils.getIdentifierField(entity.getClass());
+            var strategy = getStrategy(entity);
+            Object id;
+            if (strategy.equals(Strategy.SEQUENCE)) {
+                var formattedSequenceQuery = String.format(SELECT_SEQ_QUERY, tableName);
+                id = getSequenceId(formattedSequenceQuery);
+                sqlFieldNames = identifierField.getName() + "," + sqlFieldNames;
+                sqlFieldValues = id + "," + sqlFieldValues;
+                setIdentifierInEntity(entity, identifierField, id);
+                insertEntity(tableName, sqlFieldNames, sqlFieldValues);
+            } else if (strategy.equals(Strategy.IDENTITY)){
+                id = insertEntity(tableName, sqlFieldNames, sqlFieldValues);
+                setIdentifierInEntity(entity, identifierField, id);
+            } else {
+                String idName = getIdentifierFieldName(entity.getClass());
+                id = getIdentifierValue(entity);
+                sqlFieldNames = idName + "," + sqlFieldNames;
+                sqlFieldValues = id + "," + sqlFieldValues;
+                insertEntity(tableName, sqlFieldNames, sqlFieldValues);
+            }
+            var entityKey = EntityKey.of(entity.getClass(), id);
+            cache.put(entityKey, entity);
+            queue.addAll(node.childes());
+
+        }
+
+    }
+
+    private static void setIdentifierInEntity(Object entity, Field identifierField, Object id) {
+        identifierField.setAccessible(true);
+        try {
+            identifierField.set(entity, id);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private EntityToInsertNode buildTreeDependencyFromParentEntity(Object entityToSave) {
+        EntityToInsertNode parentEntityToInsertNode = new EntityToInsertNode(entityToSave, new ArrayList<>());
+        var queue = new ArrayDeque<EntityToInsertNode>();
+        queue.add(parentEntityToInsertNode);
+        while (!queue.isEmpty()) {
+            var currentNode = queue.poll();
+            var currentEntity = currentNode.entity();
+            var childes = currentNode.childes();
+            List<Field> collectionFieldList = DaoUtils.getCollectionFields(currentEntity.getClass());
+            for (Field collectionField : collectionFieldList) {
+                if (DaoUtils.isCollectionField(collectionField)) {
+                    var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
+                    for (var childEntity : childEntities) {
+                        var newNode = new EntityToInsertNode(childEntity, new ArrayList<>());
+                        childes.add(newNode);
+                        queue.add(newNode);
+                    }
+                }
+            }
+        }
+        return parentEntityToInsertNode;
+    }
+
+    public Object getSequenceId(String sequenceQuery) {
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(sequenceQuery)) {
+            ResultSet resultSet = preparedStatement.executeQuery();
+            resultSet.next();
+            return resultSet.getObject(1);
+        } catch (SQLException e) {
+            throw new JdbcDaoException("Can't execute query %s".formatted(sequenceQuery), "Make sure that sequence match the pattern 'tableName_seq'", e);
+        }
+    }
+
+    private Long insertEntity(String tableName, String sqlFieldNames, String sqlFieldValues) {
+        var formattedInsertSql = String.format(INSERT_QUERY, tableName, sqlFieldNames, sqlFieldValues);
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedInsertSql, Statement.RETURN_GENERATED_KEYS)) {
+            preparedStatement.executeUpdate();
+            preparedStatement.getGeneratedKeys().next();
+            return preparedStatement.getGeneratedKeys().getLong(1);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Connection getConnection() {
@@ -42,18 +133,8 @@ public class JdbcDao {
         return connection;
     }
 
-    public <T> Object findSequence(Class<T> type) {
-        isValidEntity(type);
-        String tableName = getClassTableName(type);
-        String sequenceTable = SELECT_SEQ_QUERY.formatted(tableName);
-        try (PreparedStatement preparedStatement = getConnection().prepareStatement(sequenceTable)) {
-            ResultSet resultSet = preparedStatement.executeQuery();
-            resultSet.next();
-            return resultSet.getObject(1);
-        } catch (SQLException e) {
-            throw new JdbcDaoException("Can't find sequence %s".formatted(sequenceTable),
-                    "Make sure that sequence match the pattern 'tableName_seq'", e);
-        }
+    public void setConnection(Connection connection) {
+        this.connection = connection;
     }
 
     public <T> T findByIdentifier(Class<T> entityType, String tableName, Object identifier) {
@@ -66,7 +147,7 @@ public class JdbcDao {
         var columnName = DaoUtils.getColumnName(field);
         String formattedDeleteStatement =
                 String.format(SELECT_FROM_TABLE_BY_COLUMN_STATEMENT, alias, tableName, alias, alias, columnName);
-        final var cause = String.format(CAUSE_SQL_EXCEPTION_PATTERN, columnName);
+        final var cause = String.format("Error occurred while executing 'SELECT BY %s' statement", columnName);
         var list = new ArrayList<T>();
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
             preparedStatement.setObject(1, columnValue);
@@ -106,63 +187,6 @@ public class JdbcDao {
             }
         } catch (SQLException e) {
             throw new JdbcDaoException(cause, solution, e);
-        }
-    }
-
-    public void executeInsert(Object entityToSave, List<Object> values, List<String> columns) {
-        String tableName = getClassTableName(entityToSave.getClass());
-        String insertQuery = formatQuery(tableName, INSERT_QUERY, columns, values);
-        try (PreparedStatement preparedStatement = getConnection().prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
-            setPreparedValues(values, preparedStatement);
-            preparedStatement.executeUpdate();
-            preparedStatement.getGeneratedKeys().next();
-            Object next = preparedStatement.getGeneratedKeys().getObject(1);
-            ENTITY_ID_MAP.put(entityToSave, next);
-        } catch (SQLException e) {
-            if (H2_TABLE_NOT_FOUND_STATE.equals(e.getSQLState()) || POSTGRES_TABLE_NOT_FOUND_STATE.equals(e.getSQLState())) {
-                throw new JdbcDaoException("Table %s not found".formatted(tableName), "Use @Table annotation to specify table's name", e);
-            } else {
-                throw new JdbcDaoException("Can not execute query", "See stacktrace", e);
-            }
-        }
-    }
-
-    public Object resolveEntityId(Object entityToSave, Field idField) {
-        Object savedEntityId = getFieldValue(entityToSave, idField);
-        if (idField.isAnnotationPresent(GeneratedValue.class)) {
-            if (savedEntityId != null) {
-                throw new JdbcDaoException("detached entity passed to persist: " + entityToSave.getClass().getName(), "Make sure that you don't set id manually when using @GeneratedValue");
-            } else {
-                Strategy strategy = idField.getAnnotation(GeneratedValue.class).strategy();
-                if (strategy.equals(Strategy.SEQUENCE)) {
-                    savedEntityId = findSequence(entityToSave.getClass());
-                }
-            }
-        } else if (savedEntityId == null) {
-            throw new JdbcDaoException("No id present for %s".formatted(entityToSave.getClass().getName()), "ids for this class must be manually assigned before calling save(): " + entityToSave.getClass().getName());
-        }
-        return savedEntityId;
-    }
-
-    private String formatQuery(String tableName, String query, List<String> columns, List<Object> values) {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 0; i < values.size(); i++) {
-            stringBuilder.append("?");
-            if (i != values.size() - 1) {
-                stringBuilder.append(", ");
-            }
-        }
-
-        return query.formatted(tableName, String.join(", ", columns), stringBuilder.toString());
-    }
-
-    private void setPreparedValues(List<Object> values, PreparedStatement preparedStatement) throws SQLException {
-        for (int i = 0; i < values.size(); i++) {
-            try {
-                preparedStatement.setObject(i + 1, values.get(i));
-            } catch (Exception e) {
-                preparedStatement.setObject(i + 1, values.get(i), java.sql.Types.OTHER);
-            }
         }
     }
 

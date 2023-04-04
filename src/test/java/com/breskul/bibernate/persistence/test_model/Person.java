@@ -29,7 +29,8 @@ public class Person {
 	private String lastName;
 
 
-	private LocalDate birthday;
+	@Column(name = "birthday")
+	private LocalDate birthday ;
 
 	@OneToMany
 	private List<NoteComplex> notes = new ArrayList<>();
