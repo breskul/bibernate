@@ -4,7 +4,7 @@ import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import com.breskul.bibernate.persistence.util.testModel.*;
+import com.breskul.bibernate.persistence.util.test_model.*;
 import jakarta.persistence.Column;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

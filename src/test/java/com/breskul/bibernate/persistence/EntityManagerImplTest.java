@@ -5,7 +5,7 @@ import com.breskul.bibernate.exception.EntityManagerException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.LazyInitializationException;
 import com.breskul.bibernate.exception.TransactionException;
-import com.breskul.bibernate.persistence.testmodel.*;
+import com.breskul.bibernate.persistence.test_model.*;
 import com.breskul.bibernate.persistence.testmodel.cascadepersist.CompanyCascadePersist;
 import com.breskul.bibernate.persistence.testmodel.cascadepersist.NoteComplexCascadePersist;
 import com.breskul.bibernate.persistence.testmodel.cascadepersist.PersonCascadePersist;
