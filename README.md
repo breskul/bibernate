@@ -28,6 +28,11 @@ The list of all features with code examples you can find in this guide.
     - [@OneToOne](#onetoone)
     - [@OneToMany](#onetomany)
     - [@OneToOne](#onetoone)
+- [Cascade](#entity-manager)
+  - [ALL](#Strategy-ALL)
+  - [PERSIST](#Strategy-PERSIST)
+  - [MERGE](#Strategy-MERGE)
+  - [REMOVE](#Strategy-REMOVE)
 - [Feature list](#feature-list)
     - [Entity Manager](#entity-manager)
         - [persist](#persist)
@@ -165,6 +170,20 @@ public class DemoApp {
 > Has `optional` parameter which shows whether the association is optional.
 > If it set to false then a non-null relationship must always exist.
 > His parameter is `true` by default.
+
+## Cascade
+##### Strategy-ALL
+>  Indicates that all cascade operations should be performed on the related entity.
+
+##### Strategy-PERSIST
+> Indicates that the related entity should be persisted along with the owning entity.
+
+##### Strategy-MERGE
+> Indicates that changes made to the related entity should be merged into the owning entity.
+> 
+##### Strategy-REMOVE
+> Indicates that the related entity should be removed along with the owning entity.
+
 
 
 ## Feature list
