@@ -143,6 +143,7 @@ public class DemoApp {
   `HikariCP`        	      |  `5.0.1`                            
   `lombok`        	          |  `1.18.24`                          
   `log4j-core`        	      |  `2.7`
+  `JUnit`                     |  `5.9.2`
 
 
 ## Entity Mapping
