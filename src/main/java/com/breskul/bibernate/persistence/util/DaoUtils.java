@@ -205,14 +205,14 @@ public class DaoUtils {
                 .filter(field -> field.isAnnotationPresent(OneToMany.class))
                 .toList();
     }
-    private static CascadeType getCascadeType(Field field) {
+    static CascadeType getCascadeType(Field field) {
         var cause = "OneToMany annotation does not have CascadeType";
         var solution = "annotate field with OneToMany annotation and put CascadeType on it";
         return Optional.ofNullable(field.getAnnotation(OneToMany.class))
                 .orElseThrow(() -> new JdbcDaoException(cause, solution))
                 .cascade();
     }
-    private static boolean isFieldAllOrRemoveCascade(Field field){
+    static boolean isFieldAllOrRemoveCascade(Field field){
         var cascadeType = getCascadeType(field);
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
     }
