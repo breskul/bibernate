@@ -139,6 +139,9 @@ public class DaoUtils {
     }
 
     public static String getColumnName(Field field) {
+        if (field.isAnnotationPresent(JoinColumn.class)){
+            return field.getAnnotation(JoinColumn.class).name();
+        }
         return Optional.ofNullable(field.getAnnotation(Column.class)).map(Column::name).orElse(field.getName());
     }
 
