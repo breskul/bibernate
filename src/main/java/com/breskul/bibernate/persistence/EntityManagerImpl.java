@@ -18,7 +18,17 @@ import java.util.*;
 import java.util.function.Supplier;
 
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
-
+/**
+ * <h2>This is the implementation class of the EntityManager interface. This class provides an implementation of the basic operations that can be performed on entities.</h2>
+ * <p>Following fields are present:</p>
+ * <ul>
+ *     <li>dataSource: The {@link DataSource} object that is used to connect to the database.</li>
+ *     <li>jdbcDao: The {@link JdbcDao} object that is used to execute SQL queries and interact with the database.</li>
+ *     <li>entityTransaction: The {@link EntityTransactionImpl} object that is used to manage transactions.</li>
+ *     <li>cache: The {@link Map} object that is used to cache entities.</li>
+ *     <li>isOpen: A boolean value indicating whether the EntityManager is open or closed.</li>
+ * </ul>
+ */
 public class EntityManagerImpl implements EntityManager {
     private final DataSource dataSource;
     private final JdbcDao jdbcDao;
@@ -33,13 +43,19 @@ public class EntityManagerImpl implements EntityManager {
         this.jdbcDao = new JdbcDao(cache);
         this.isOpen = true;
     }
-
+    /**
+     * <p>checks if the EntityManager is open. If the EntityManager is closed, an EntityManagerException is thrown.</p>
+     */
     private void validateSession() {
         if (!this.isOpen) {
             throw new EntityManagerException("Entity manager closed", "Need to create new EntityManager instance");
         }
     }
-
+    /**
+     * <p> Persists the given entity to the database.</p>
+     * <p>This method first validates the session, then checks if the entity is a valid entity using the {@link DaoUtils#isValidEntity} method, and finally calls the {@link JdbcDao#persist} to execute the SQL query</p>
+     * @param entity {@link Object} entity to be validated
+     */
     public void persist(Object entity) {
         validateSession();
         isValidEntity(entity, cache);
@@ -87,7 +103,11 @@ public class EntityManagerImpl implements EntityManager {
             }
         }
     }
-
+    /**
+     * <p>Removes the given entity from the database. This method first validates the session.</p>
+     * <p> Then gets the table name, identifier name, and identifier value of the entity using the DaoUtils class,and finally calls the {@link JdbcDao#deleteByIdentifier} method of the jdbcDao field to execute the SQL query. The entity is also removed from the cache.</p>
+     * @param entity {@link Object} - entity to be removed
+     */
     @Override
     public void remove(Object entity) {
         validateSession();
@@ -98,7 +118,13 @@ public class EntityManagerImpl implements EntityManager {
         EntityKey<?> entityKey = EntityKey.of(entity.getClass(), identifierValue);
         cache.remove(entityKey);
     }
-
+    /**
+     * <p>Finds the entity with the given primary key in the database. This method first validates the session, then gets the table name and a supplier that fetches the entity from the database using the jdbcDao field and the CacheUtils class.</p>
+     * <p>The entity is also cached using the cache field. The method returns the entity cast to the given entity class</p>
+     * @param entityClass {@link Class} - class of the entity to be found
+     * @param primaryKey {@link Object} - identifier value of the given entity
+     * @return entity {@link Object} - generated entity form the database row record
+     */
     @Override
     public <T> T find(Class<T> entityClass, Object primaryKey) {
         validateSession();
@@ -306,10 +332,10 @@ public class EntityManagerImpl implements EntityManager {
     }
 
     /**
-     * Return EntityTransaction.
+     * <p>Return EntityTransaction</p>
      *
      * @return EntityTransaction interface
-     * @throws TransactionException if can not get connection
+     * @throws TransactionException connection could not be obtained
      **/
     @Override
     public EntityTransaction getTransaction() {
