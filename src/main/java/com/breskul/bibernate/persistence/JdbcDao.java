@@ -7,7 +7,6 @@ import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.DaoUtils;
-import com.breskul.bibernate.persistence.util.EntityToInsertNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +34,11 @@ public class JdbcDao {
         this.cache = cache;
     }
 
+    /**
+     * <p>This method persists the given entity along with all of its dependent entities into the database. The entity to persist is passed as a parameter to this method.</p>
+     *
+     * @param parentEntity {@link Object} the JPA entity for which the list of column names should be returned.
+     */
     public void persist(Object parentEntity) {
         EntityToInsertNode parentEntityToInsertNode = buildTreeDependencyFromParentEntity(parentEntity);
         var queue = new ArrayDeque<EntityToInsertNode>();
@@ -73,7 +77,12 @@ public class JdbcDao {
         }
 
     }
-
+    /**
+     * <p>This method sets the identifier field of the given entity with the given identifier value.</p>
+     * @param entity {@link Object} entity in which identifier value will be set
+     * @param identifierField {@link Field} identifier field
+     * @param id {@link Object} value which would be inserted into entity
+     */
     private static void setIdentifierInEntity(Object entity, Field identifierField, Object id) {
         identifierField.setAccessible(true);
         try {
@@ -82,7 +91,13 @@ public class JdbcDao {
             throw new RuntimeException(e);
         }
     }
+    /**
+     * <p>This method builds a tree of dependent entities starting from the given entity, which is used to determine the order in which the entities should be persisted.</p>
+     *
+     * @param entityToSave {@link Object} the JPA entity for which the list of column names should be returned.
+     * @return {@link EntityToInsertNode} the parent node with all childes dependencies entities
 
+     */
     private EntityToInsertNode buildTreeDependencyFromParentEntity(Object entityToSave) {
         EntityToInsertNode parentEntityToInsertNode = new EntityToInsertNode(entityToSave, new ArrayList<>());
         var queue = new ArrayDeque<EntityToInsertNode>();
@@ -105,7 +120,11 @@ public class JdbcDao {
         }
         return parentEntityToInsertNode;
     }
-
+    /**
+     * <p>This method executes the given sequence query and returns the next value from the sequence.</p>
+     * @param sequenceQuery {@link String} formatted query executed in database
+     * @return id {@link Object} from database
+     */
     public Object getSequenceId(String sequenceQuery) {
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(sequenceQuery)) {
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -115,13 +134,19 @@ public class JdbcDao {
             throw new JdbcDaoException("Can't execute query %s".formatted(sequenceQuery), "Make sure that sequence match the pattern 'tableName_seq'", e);
         }
     }
-
-    private Long insertEntity(String tableName, String sqlFieldNames, String sqlFieldValues) {
+    /**
+     * <p>This method inserts an entity into the specified table in the database and returns the generated identifier value.</p>
+     * @param tableName {@link String} - name of the table
+     * @param sqlFieldNames {@link String} - name of the sql field names for the given entity
+     * @param sqlFieldValues {@link String} - values of the sql field names for the given entity
+     * @return id {@link Object} - identifier for the inserted entity
+     */
+    private Object insertEntity(String tableName, String sqlFieldNames, String sqlFieldValues) {
         var formattedInsertSql = String.format(INSERT_QUERY, tableName, sqlFieldNames, sqlFieldValues);
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedInsertSql, Statement.RETURN_GENERATED_KEYS)) {
             preparedStatement.executeUpdate();
             preparedStatement.getGeneratedKeys().next();
-            return preparedStatement.getGeneratedKeys().getLong(1);
+            return preparedStatement.getGeneratedKeys().getObject(1);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -138,11 +163,27 @@ public class JdbcDao {
         this.connection = connection;
     }
 
+    /**
+      * <p>Finds an entity by its identifier</p>
+      * @param entityType {@link Class} the class of the entity to find
+      * @param tableName {@link String} the name of the table in which to search for the entity
+      * @param identifier {@link Object} the identifier of the entity to find
+      * @param <T> the type of the entity to find
+      * @return the entity if found, null otherwise
+     */
     public <T> T findByIdentifier(Class<T> entityType, String tableName, Object identifier) {
         Field idField = DaoUtils.getIdentifierField(entityType);
         return findOneBy(entityType, tableName, idField, identifier);
     }
-
+    /**
+     * <p>Finds all entities of the given class that have a field with a given value</p>
+     * @param entityType {@link Class}the class of the entity to find
+     * @param tableName {@link String}the name of the table in which to search for the entities
+     * @param field {@link Field}the field in which to search for the value
+     * @param columnValue {@link Object} the value to search for
+     * @param <T> the type of the entity to find
+     * @return a list {@link List} of entities that have the given value in the given field
+     */
     public <T> List<T> findAllBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
         final var alias = tableName.substring(0, 1).toLowerCase();
         var columnName = DaoUtils.getColumnName(field);
@@ -163,7 +204,15 @@ public class JdbcDao {
         }
         return list;
     }
-
+    /**
+     * <p>Finds an entity of the given class that has a field with a given value</p>
+     * @param entityType {@link Class} the class of the entity to find
+     * @param tableName {@link String} the name of the table in which to search for the entity
+     * @param field {@link Field} the field in which to search for the value
+     * @param columnValue {@link Object} the value to search for
+     * @param <T> the type of the entity to find
+     * @return the entity if found, null otherwise
+     */
     public <T> T findOneBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
         List<T> resultList = findAllBy(entityType, tableName, field, columnValue);
         if (resultList.size() > 1) {
@@ -174,7 +223,12 @@ public class JdbcDao {
             return null;
         }
     }
-
+    /**
+     * <p>Deletes an entity from the database using its identifier</p>
+     * @param tableName the name of the table in which to delete the entity
+     * @param identifierName the name of the identifier column
+     * @param identifier the identifier of the entity to delete
+     */
     public void deleteByIdentifier(String tableName, String identifierName, Object identifier) {
         String formattedDeleteStatement = String.format(DELETE_STATEMENT, tableName, identifierName);
         var cause = "error occurred while executing delete statement";
@@ -190,7 +244,12 @@ public class JdbcDao {
             throw new JdbcDaoException(cause, solution, e);
         }
     }
-
+    /**
+     * <p>creates a Java object of a given entity class from the ResultSet obtained from a database query.</p>
+     * @param entityType {@link Class} A class object representing the type of the entity to be created.
+     * @param resultSet {@link ResultSet} object representing the result set obtained from a database query.
+     * @return {@link Object} returns the entity representation of the sql row entry in database
+     */
     public <T> T createEntityFromResultSet(Class<T> entityType, ResultSet resultSet) throws SQLException {
         T entity;
         try {

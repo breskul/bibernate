@@ -16,21 +16,18 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Reflection utils methods
+ * <h3>{@link DaoUtils} provides reflection utility methods to work with Java Persistence API (JPA) entities. </h3>
  */
 public class DaoUtils {
     private DaoUtils() {
     }
 
-    public static Strategy getStrategy(Object entity) {
-        var entityClass = entity.getClass();
-        return Arrays.stream(entityClass.getDeclaredFields())
-                .filter(field -> field.isAnnotationPresent(GeneratedValue.class))
-                .findAny()
-                .map(field -> field.getAnnotation(GeneratedValue.class))
-                .map(GeneratedValue::strategy).orElse(Strategy.AUTO);
-    }
-
+    /**
+     * <p>This method returns a comma-separated list of the names of all the columns of the database table corresponding to a given JPA entity that do not correspond to collection or primary key fields.</p>
+     *
+     * @param entity {@link Object} the JPA entity for which the list of column names should be returned.
+     * @return {@link String} A comma-separated string containing the names of all the columns of the database table corresponding to the given JPA entity that do not correspond to collection or primary key fields.
+     */
     public static String getSqlFieldNames(Object entity) {
         var entityClass = entity.getClass();
         return Arrays.stream(entityClass.getDeclaredFields())
@@ -39,15 +36,32 @@ public class DaoUtils {
                 .collect(Collectors.joining(","));
 
     }
-
+    /**
+     * <p>This method returns {@link Boolean#TRUE} if a given field of a JPA entity is annotated with {@link OneToMany}, indicating that it corresponds to a collection of related entities.</p>
+     *
+     * @param field {@link Field} the field to check.
+     * @return {@link Boolean}
+     */
     public static boolean isCollectionField(Field field) {
         return field.isAnnotationPresent(OneToMany.class);
     }
 
+    /**
+     * <p>This method returns {@link Boolean#TRUE}  if a given field of a JPA entity is annotated with {@link Id}, indicating that it corresponds to the primary key of the entity.</p>
+     *
+     * @param field {@link Field} the field to check.
+     * @return {@link Boolean}
+     */
     public static boolean isIdField(Field field) {
         return field.isAnnotationPresent(Id.class);
     }
 
+    /**
+     * <p>This method returns the name of the database column corresponding to a given field of a JPA entity. If the field is annotated with {@link JoinColumn}, the name specified in that annotation is used. Otherwise, the name of the field itself is used.</p>
+     *
+     * @param field {@link Field} the field for which to return the database column name..
+     * @return {@link String} the name of the database column corresponding to the given field.
+     */
     public static String resolveColumnName(Field field) {
         if (Objects.isNull(field)) {
             throw new RuntimeException("You can not have null field");
@@ -62,6 +76,12 @@ public class DaoUtils {
 
     }
 
+    /**
+     * <p>This method returns a comma-separated list of the values of all the columns of the database table corresponding to a given JPA entity that do not correspond to collection or primary key fields.</p>
+     *
+     * @param entity {@link Object} the JPA entity for which the list of column values should be returned.
+     * @return {@link String} A comma-separated string containing the values of all the columns of the database table corresponding to the given JPA entity that do not correspond to collection or primary key fields.
+     */
     public static String getSqlFieldValues(Object entity) {
         var entityClass = entity.getClass();
         return Arrays.stream(entityClass.getDeclaredFields())
@@ -70,6 +90,20 @@ public class DaoUtils {
                 .collect(Collectors.joining(","));
 
     }
+    /**
+     * <p>This method returns a string representation of the value of a given field of a JPA entity. The representation is formatted as follows:</p>
+     * <ol>
+     *     <li>If the value is null, the string "null" is returned.</li>
+     *     <li>If the value is a string, a LocalDate, or a LocalDateTime, the value is enclosed in single quotes (').</li>
+     *     <li>If the value is a number, its string representation is returned.</li>
+     *     <li>If the value is a JPA entity, the value of its primary key field is returned.</li>
+     *     <li>Otherwise, the string representation of the value</li>
+     * </ol>
+     *
+     * @param entity {@link Object} The entity object to get the field value from.
+     * @param field {@link Field} The field to get the value of.
+     * @return A string representation of the value of the field.
+     */
 
     public static String getString(Object entity, Field field) {
         var value = getFieldValue(entity, field);
@@ -88,6 +122,14 @@ public class DaoUtils {
         return value.toString();
     }
 
+    /**
+     * <p>Gets the value of a field from an object using reflection.</p>
+     *
+     * @param object {@link Object}   the object to get the field value from
+     * @param idField {@link Field}  the field to get the value of
+     * @return the value {@link Object}  of the field in the object
+     * @throws InternalException if the field value cannot be retrieved
+     */
     public static Object getFieldValue(Object object, Field idField) {
         idField.setAccessible(true);
         try {
@@ -97,14 +139,26 @@ public class DaoUtils {
         }
 
     }
-
+    /**
+     * <p>Checks if a field is a parent entity field.</p>
+     *
+     * @param field {@link Field} the field to check
+     * @return {@link Boolean#TRUE} if the field is a parent entity field; {@link Boolean#FALSE} otherwise
+     */
     public static boolean isParentEntityField(Field field) {
         if (Objects.isNull(field)) {
             return false;
         }
         return field.isAnnotationPresent(ManyToOne.class);
     }
-
+    /**
+     * <p>Gets the value of the identifier field of an entity object.</p>
+     *
+     * @param entity {@link Object} the entity object to get the identifier value from
+     * @param <T>    the type of the entity object
+     * @return the value of the identifier field in the entity object
+     * @throws DaoUtilsException if the identifier value cannot be retrieved
+     */
     public static <T> Object getIdentifierValue(T entity) {
         Field identifierField = getIdentifierField(entity.getClass());
         try {
@@ -117,7 +171,13 @@ public class DaoUtils {
         }
 
     }
-
+    /**
+     * <p>Gets the identifier field of an entity class.</p>
+     *
+     * @param entityClass {@link Class} the entity class to get the identifier field from
+     * @return the identifier field {@link Field} of the entity class
+     * @throws DaoUtilsException if the entity class is not marked with @Id annotation
+     */
     public static Field getIdentifierField(Class<?> entityClass) {
         var cause = "entity is not marked with Id annotation";
         var solution = "mark id column with Id annotation";
@@ -127,17 +187,35 @@ public class DaoUtils {
                 .orElseThrow(() -> new DaoUtilsException(cause, solution));
     }
 
+    /**
+     * <p>Gets a list of collection fields from an entity class.</p>
+     *
+     * @param entityClass {@link Class} the entity class to get the collection fields from
+     * @return a list of collection fields in the entity class
+     */
     public static List<Field> getCollectionFields(Class<?> entityClass) {
         return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(OneToMany.class))
                 .toList();
     }
 
+    /**
+     * <p>Gets the name of the identifier field of an entity class.</p>
+     *
+     * @param entityClass {@link Class} the entity class to get the identifier field name from
+     * @return the name {@link String} of the identifier field in the entity class
+     */
     public static String getIdentifierFieldName(Class<?> entityClass) {
         Field field = getIdentifierField(entityClass);
         return field.getName();
     }
 
+    /**
+     * <p>Returns the name of the column in the database that corresponds to the given field.</p>
+     *
+     * @param field {@link Field} the field to get the column name for
+     * @return the name {@link String} of the column in the database that corresponds to the given field
+     */
     public static String getColumnName(Field field) {
         if (field.isAnnotationPresent(JoinColumn.class)){
             return field.getAnnotation(JoinColumn.class).name();
@@ -145,6 +223,12 @@ public class DaoUtils {
         return Optional.ofNullable(field.getAnnotation(Column.class)).map(Column::name).orElse(field.getName());
     }
 
+    /**
+     * <p>Returns the name of the table in the database that corresponds to the given entity class.</p>
+     *
+     * @param entityClass {@link Class} the entity class to get the table name for
+     * @return the name {@link String} of the table in the database that corresponds to the given entity class
+     */
     public static String getClassTableName(Class<?> entityClass) {
         return Optional.ofNullable(entityClass.getAnnotation(Table.class))
                 .map(Table::name)
@@ -152,6 +236,12 @@ public class DaoUtils {
 
     }
 
+    /**
+     * <p>Resolves the name of a field, taking into account any annotations that might override the default name.</p>
+     *
+     * @param field {@link Field} the field to resolve the name of
+     * @return the resolved name {@link String} of the field
+     */
     public static String resolveFieldName(Field field) {
         if (field.isAnnotationPresent(Column.class)) {
             String fieldName = field.getAnnotation(Column.class).name();
@@ -166,30 +256,48 @@ public class DaoUtils {
         }
         return field.getName();
     }
-
-    //rm
-    public static Field getFieldByAnnotation(Class<?> object, Class<? extends Annotation> annotation) {
-        return Arrays.stream(object.getDeclaredFields())
-                .filter(field -> field.isAnnotationPresent(annotation))
-                .findAny()
-                .orElseThrow(() -> new RuntimeException(annotation.getName() + " is not present"));
-    }
-
+    /**
+     * <p>Determines whether the given field represents a regular (i.e., non-entity) field.</p>
+     *
+     * @param field - {@link Field} the field to check
+     * @return {@link Boolean#TRUE} if the given field represents a regular field, {@link Boolean#FALSE} otherwise
+     */
     public static boolean isRegularField(Field field) {
         return !isEntityField(field) && !isEntityCollectionField(field);
     }
 
+    /**
+     * <p>Determines whether the given field represents an entity field (i.e., a field that has the @ManyToOne or @OneToOne annotation).</p>
+     *
+     * @param field {@link Field} the field to check
+     * @return {@link Boolean#TRUE} if the given field represents an entity field, {@link Boolean#FALSE} otherwise
+     */
     public static boolean isEntityField(Field field) {
         return field.isAnnotationPresent(ManyToOne.class) || field.isAnnotationPresent(OneToOne.class);
     }
 
     /**
-     * This method set value to field mapped by accepted annotation
+     * <p>Determines whether the given field represents an entity collection field (i.e., a field that has the @OneToMany annotation).</p>
      *
-     * @param entity
-     * @param value
-     * @param annotationClass
-     **/
+     * @param field {@link Field} the field to check
+     * @return {@link Boolean#TRUE} if the given field represents an entity collection field, {@link Boolean#FALSE} otherwise
+     */
+    public static boolean isEntityCollectionField(Field field) {
+        return field.isAnnotationPresent(OneToMany.class);
+    }
+
+    public static boolean isEntityCollectionFieldIsLazy(Field field) {
+        return field.getAnnotation(OneToMany.class).fetch() == FetchType.LAZY;
+    }
+
+    /**
+     * <p>Set the value of a field annotated with a given annotation in an entity.</p>
+     *
+     * @param entity {@link Object} the entity object to set the field value for
+     * @param value {@link Object} the value to be set to the field
+     * @param annotationClass {@link Class} the class of the annotation that is present on the field to set the value for
+     * @throws InternalException if the field with the given annotation is not found, or if the field cannot be accessed or set
+     */
     public static void setValueToField(Object entity, Object value, Class<? extends Annotation> annotationClass) {
         var entityType = entity.getClass();
         Field field = Arrays.stream(entityType.getDeclaredFields())
@@ -211,15 +319,13 @@ public class DaoUtils {
         }
     }
 
-    public static boolean isEntityCollectionField(Field field) {
-        return field.isAnnotationPresent(OneToMany.class);
-    }
-
-    public static boolean isEntityCollectionFieldIsLazy(Field field) {
-        return field.getAnnotation(OneToMany.class).fetch() == FetchType.LAZY;
-    }
-
-
+    /**
+     * <p>Resolve the name of the table that an entity is mapped to.</p>
+     *
+     * @param entity {@link Object} the entity object to resolve the table name for
+     * @return the name {@link String} of the table that the entity is mapped to
+     * @throws JdbcDaoException if the entity class is not annotated with {@link Table}
+     */
     public static String resolveTableName(Object entity) {
         var entityClass = entity.getClass();
         if (!entityClass.isAnnotationPresent(Table.class)) {
@@ -231,6 +337,13 @@ public class DaoUtils {
 
     }
 
+    /**
+     * <p>Check if an object is a valid entity and has a valid identifier.</p>
+     *
+     * @param entity {@link Object} the entity object to check
+     * @param cache {@link Map} the cache of entities to check against for detached entities
+     * @throws JdbcDaoException if the entity is not a valid entity, has more than one @Id annotation, has no @Id annotation, or is detached and has a manual id set with a @GeneratedValue strategy that is not AUTO
+     */
     public static <T> void isValidEntity(T entity, Map<EntityKey<?>, Object> cache) {
         var type = entity.getClass();
         if (!type.isAnnotationPresent(Entity.class)) {
@@ -245,11 +358,25 @@ public class DaoUtils {
 
         Object id = getIdentifierValue(entity);
         var strategy = getStrategy(entity);
-        if (!strategy.equals(Strategy.AUTO) && !Objects.isNull(id) && !cache.containsKey(EntityKey.of(entity.getClass(), id))) {
+        if (!strategy.equals(Strategy.AUTO) && !Objects.isNull(id) && !cache.containsKey(EntityKey.of(entity.getClass(), id)) ) {
             throw new JdbcDaoException("detached entity is passed to persist", "Make sure that you don't set id manually when using @GeneratedValue");
         }
 
 
+    }
+    /**
+     * <p>This method returns the strategy used for generating values of the primary key for a given JPA entity. It looks for fields in the entity class that are annotated with @GeneratedValue and returns the strategy specified by that annotation. If no such field is found, it returns Strategy.AUTO</p>
+     *
+     * @param entity {@link Object} the JPA entity for which the strategy should be returned.
+     * @return {@link Strategy} used for generating values of the primary key for the given JPA entity.
+     */
+    public static Strategy getStrategy(Object entity) {
+        var entityClass = entity.getClass();
+        return Arrays.stream(entityClass.getDeclaredFields())
+                .filter(field -> field.isAnnotationPresent(GeneratedValue.class))
+                .findAny()
+                .map(field -> field.getAnnotation(GeneratedValue.class))
+                .map(GeneratedValue::strategy).orElse(Strategy.AUTO);
     }
 
     public static <T> Field getRelatedEntityField(Class<T> fromEntity, Class<?> toEntityType) {
