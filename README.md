@@ -147,8 +147,23 @@ public class DemoApp {
 
 ## Entity Mapping
 ##### @OneToOne
+> Specifies a single-valued association to another entity class that has many-to-one multiplicity.
+> Has `optional` parameter which shows whether the association is optional. 
+> If it set to false then a non-null relationship must always exist.
+> His parameter is `true` by default.
+
 ##### @OneToMany
+> Specifies a many-valued association with one-to-many multiplicity
+> Has `fetch` parameter which shoes whether the association should be lazily loaded or must be eagerly fetched. The 
+> EAGER strategy is a requirement on the persistence provider runtime that the associated entities must be eagerly fetched. 
+> The LAZY strategy is a hint to the persistence provider runtime.
+> His parameter is `FetchType.LAZY` by default.
+
 ##### @ManyToOne
+> Specifies a single-valued association to another entity class that has many-to-one multiplicity
+> Has `optional` parameter which shows whether the association is optional.
+> If it set to false then a non-null relationship must always exist.
+> His parameter is `true` by default.
 
 
 ## Feature list

@@ -1,5 +1,7 @@
 package com.breskul.bibernate.annotation;
 
+import jakarta.persistence.FetchType;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -11,4 +13,13 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface OneToMany {
+
+    /**
+     * (Optional) Whether the association should be lazily loaded or
+     * must be eagerly fetched. The EAGER strategy is a requirement on
+     * the persistence provider runtime that the associated entities
+     * must be eagerly fetched.  The LAZY strategy is a hint to the
+     * persistence provider runtime.
+     */
+    FetchType fetch() default FetchType.LAZY;
 }

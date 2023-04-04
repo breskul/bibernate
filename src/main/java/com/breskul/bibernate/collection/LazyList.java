@@ -1,5 +1,8 @@
 package com.breskul.bibernate.collection;
 
+import com.breskul.bibernate.exception.LazyInitializationException;
+import com.breskul.bibernate.exception.TransactionException;
+
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.Stream;
@@ -20,149 +23,153 @@ public class LazyList<T> implements List<T> {
 
     private List<T> getInternalList() {
         if (internalList == null) {
-            internalList = (List<T>) collectionSupplier.get();
+            try {
+                internalList = (List<T>) collectionSupplier.get();
+            } catch (TransactionException e) {
+                throw new LazyInitializationException(e);
+            }
         }
         return internalList;
     }
 
     @Override
     public int size() {
-        return internalList.size();
+        return getInternalList().size();
     }
 
     @Override
     public boolean isEmpty() {
-        return internalList.isEmpty();
+        return getInternalList().isEmpty();
     }
 
     @Override
     public boolean contains(Object o) {
-        return internalList.contains(o);
+        return getInternalList().contains(o);
     }
 
     @Override
     public Iterator<T> iterator() {
-        return internalList.iterator();
+        return getInternalList().iterator();
     }
 
     @Override
     public Object[] toArray() {
-        return internalList.toArray();
+        return getInternalList().toArray();
     }
 
     @Override
     public <T1> T1[] toArray(T1[] a) {
-        return internalList.toArray(a);
+        return getInternalList().toArray(a);
     }
 
     @Override
     public boolean add(T t) {
-        return internalList.add(t);
+        return getInternalList().add(t);
     }
 
     @Override
     public boolean remove(Object o) {
-        return internalList.remove(o);
+        return getInternalList().remove(o);
     }
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        return internalList.containsAll(c);
+        return getInternalList().containsAll(c);
     }
 
     @Override
     public boolean addAll(Collection<? extends T> c) {
-        return internalList.addAll(c);
+        return getInternalList().addAll(c);
     }
 
     @Override
     public boolean addAll(int index, Collection<? extends T> c) {
-        return internalList.addAll(index, c);
+        return getInternalList().addAll(index, c);
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        return internalList.removeAll(c);
+        return getInternalList().removeAll(c);
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        return internalList.retainAll(c);
+        return getInternalList().retainAll(c);
     }
 
     @Override
     public void replaceAll(UnaryOperator<T> operator) {
-        internalList.replaceAll(operator);
+        getInternalList().replaceAll(operator);
     }
 
     @Override
     public void sort(Comparator<? super T> c) {
-        internalList.sort(c);
+        getInternalList().sort(c);
     }
 
     @Override
     public void clear() {
-        internalList.clear();
+        getInternalList().clear();
     }
 
     @Override
     public boolean equals(Object o) {
-        return internalList.equals(o);
+        return getInternalList().equals(o);
     }
 
     @Override
     public int hashCode() {
-        return internalList.hashCode();
+        return getInternalList().hashCode();
     }
 
     @Override
     public T get(int index) {
-        return internalList.get(index);
+        return getInternalList().get(index);
     }
 
     @Override
     public T set(int index, T element) {
-        return internalList.set(index, element);
+        return getInternalList().set(index, element);
     }
 
     @Override
     public void add(int index, T element) {
-        internalList.add(index, element);
+        getInternalList().add(index, element);
     }
 
     @Override
     public T remove(int index) {
-        return internalList.remove(index);
+        return getInternalList().remove(index);
     }
 
     @Override
     public int indexOf(Object o) {
-        return internalList.indexOf(o);
+        return getInternalList().indexOf(o);
     }
 
     @Override
     public int lastIndexOf(Object o) {
-        return internalList.lastIndexOf(o);
+        return getInternalList().lastIndexOf(o);
     }
 
     @Override
     public ListIterator<T> listIterator() {
-        return internalList.listIterator();
+        return getInternalList().listIterator();
     }
 
     @Override
     public ListIterator<T> listIterator(int index) {
-        return internalList.listIterator(index);
+        return getInternalList().listIterator(index);
     }
 
     @Override
     public List<T> subList(int fromIndex, int toIndex) {
-        return internalList.subList(fromIndex, toIndex);
+        return getInternalList().subList(fromIndex, toIndex);
     }
 
     @Override
     public Spliterator<T> spliterator() {
-        return internalList.spliterator();
+        return getInternalList().spliterator();
     }
 
     public static <E> List<E> of() {
@@ -220,26 +227,26 @@ public class LazyList<T> implements List<T> {
 
     @Override
     public <T1> T1[] toArray(IntFunction<T1[]> generator) {
-        return internalList.toArray(generator);
+        return getInternalList().toArray(generator);
     }
 
     @Override
     public boolean removeIf(Predicate<? super T> filter) {
-        return internalList.removeIf(filter);
+        return getInternalList().removeIf(filter);
     }
 
     @Override
     public Stream<T> stream() {
-        return internalList.stream();
+        return getInternalList().stream();
     }
 
     @Override
     public Stream<T> parallelStream() {
-        return internalList.parallelStream();
+        return getInternalList().parallelStream();
     }
 
     @Override
     public void forEach(Consumer<? super T> action) {
-        internalList.forEach(action);
+        getInternalList().forEach(action);
     }
 }

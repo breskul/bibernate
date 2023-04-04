@@ -1,4 +1,4 @@
-package com.breskul.bibernate.persistence.testmodel;
+package com.breskul.bibernate.persistence.test_model;
 
 import com.breskul.bibernate.annotation.*;
 import lombok.Data;

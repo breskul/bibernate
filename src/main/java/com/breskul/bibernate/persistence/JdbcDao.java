@@ -1,6 +1,7 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.annotation.Table;
 import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
@@ -55,7 +56,7 @@ public class JdbcDao {
                 sqlFieldValues = id + "," + sqlFieldValues;
                 setIdentifierInEntity(entity, identifierField, id);
                 insertEntity(tableName, sqlFieldNames, sqlFieldValues);
-            } else if (strategy.equals(Strategy.IDENTITY)){
+            } else if (strategy.equals(Strategy.IDENTITY)) {
                 id = insertEntity(tableName, sqlFieldNames, sqlFieldValues);
                 setIdentifierInEntity(entity, identifierField, id);
             } else {
@@ -221,7 +222,7 @@ public class JdbcDao {
                     field.set(entity, relatedEntity);
                 } else if (isEntityCollectionField(field)) {
                     logger.debug("Setting lazy list for toMany related entities");
-                    var relatedEntityType =  DaoUtils.getEntityCollectionElementType(field);
+                    var relatedEntityType = DaoUtils.getEntityCollectionElementType(field);
                     var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
                     var entityFieldInRelatedEntity = DaoUtils.getRelatedEntityField(entityType, relatedEntityType);
                     var entityId = DaoUtils.getIdentifierValue(entity);
