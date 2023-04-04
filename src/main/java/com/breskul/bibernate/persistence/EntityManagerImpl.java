@@ -13,6 +13,7 @@ import jakarta.persistence.criteria.CriteriaUpdate;
 import jakarta.persistence.metamodel.Metamodel;
 
 import javax.sql.DataSource;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -52,12 +53,14 @@ public class EntityManagerImpl implements EntityManager {
         Object id = getIdentifierValue(entity);
         Class<T> entityClass = (Class<T>) entity.getClass();
         T newEntity;
-        if (cache.containsKey(new EntityKey<>(entityClass, id))) {
-            newEntity = entity;
-        } else {
-            newEntity = find(entityClass, id);
-            mergeEntities(newEntity, entity);
+
+        if (cache.containsKey(EntityKey.of(entityClass, id))) {
+            return entity;
         }
+
+        newEntity = find(entityClass, id);
+        mergeEntities(newEntity, entity);
+
         return newEntity;
     }
 
