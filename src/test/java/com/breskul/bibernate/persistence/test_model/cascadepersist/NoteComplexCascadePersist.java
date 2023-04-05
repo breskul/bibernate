@@ -1,6 +1,7 @@
-package com.breskul.bibernate.persistence.testmodel.cascadepersist;
+package com.breskul.bibernate.persistence.test_model.cascadepersist;
 
 import com.breskul.bibernate.annotation.*;
+import com.breskul.bibernate.annotation.enums.CascadeType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.breskul.bibernate.annotation.Strategy.SEQUENCE;
+import static com.breskul.bibernate.annotation.enums.Strategy.SEQUENCE;
 
 @Entity
 @Data

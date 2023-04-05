@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.breskul.bibernate.annotation.Strategy.SEQUENCE;
+import static com.breskul.bibernate.annotation.enums.Strategy.SEQUENCE;
 
 @Entity
 @Data

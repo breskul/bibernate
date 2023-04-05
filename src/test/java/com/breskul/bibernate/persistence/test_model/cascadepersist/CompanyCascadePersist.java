@@ -1,10 +1,10 @@
-package com.breskul.bibernate.persistence.testmodel.cascadepersist;
+package com.breskul.bibernate.persistence.test_model.cascadepersist;
 
 import com.breskul.bibernate.annotation.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import static com.breskul.bibernate.annotation.Strategy.SEQUENCE;
+import static com.breskul.bibernate.annotation.enums.Strategy.SEQUENCE;
 
 @Entity
 @Data

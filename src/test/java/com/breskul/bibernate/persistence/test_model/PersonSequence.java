@@ -1,6 +1,7 @@
 package com.breskul.bibernate.persistence.test_model;
 
 import com.breskul.bibernate.annotation.*;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import lombok.Data;
 
 import java.time.LocalDate;

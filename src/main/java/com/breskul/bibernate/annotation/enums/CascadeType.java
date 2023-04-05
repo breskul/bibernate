@@ -1,4 +1,4 @@
-package com.breskul.bibernate.annotation;
+package com.breskul.bibernate.annotation.enums;
 /**
  * <h3>The CascadeType enum defines the different types of cascade operations that can be performed on a JPA entity when a related entity is persisted, merged, or removed.</h3>
  */

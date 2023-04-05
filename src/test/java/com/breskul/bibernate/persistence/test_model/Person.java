@@ -5,7 +5,7 @@ import com.breskul.bibernate.annotation.Entity;
 import com.breskul.bibernate.annotation.GeneratedValue;
 import com.breskul.bibernate.annotation.Id;
 import com.breskul.bibernate.annotation.OneToMany;
-import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.annotation.Table;
 import lombok.Data;
 import lombok.ToString;

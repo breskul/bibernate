@@ -1,6 +1,8 @@
 package com.breskul.bibernate.persistence.util;
 
 import com.breskul.bibernate.annotation.*;
+import com.breskul.bibernate.annotation.enums.CascadeType;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;

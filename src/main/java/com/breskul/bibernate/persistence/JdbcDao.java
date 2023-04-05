@@ -1,6 +1,6 @@
 package com.breskul.bibernate.persistence;
 
-import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
