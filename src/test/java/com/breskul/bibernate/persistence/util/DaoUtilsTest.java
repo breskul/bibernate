@@ -3,16 +3,21 @@ package com.breskul.bibernate.persistence.util;
 import com.breskul.bibernate.annotation.GeneratedValue;
 import com.breskul.bibernate.annotation.Id;
 import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
+import com.breskul.bibernate.persistence.test_model.Person;
 import com.breskul.bibernate.persistence.util.test_model.*;
 import jakarta.persistence.Column;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -214,6 +219,35 @@ class DaoUtilsTest {
         assertEquals("John", result);
     }
 
+    @Test
+    @DisplayName("isLoadedList returns ture")
+    void testIsLoadedListTrue() throws Exception {
+        LazyList<String> lazyList = new LazyList<>(ArrayList::new);
+        lazyList.add("foo");
+        lazyList.add("bar");
 
+        boolean result = DaoUtils.isLoadedLazyList(lazyList);
 
+        Assertions.assertTrue(result);
+    }
+
+    @Test
+    @DisplayName("isLoadedList returns false")
+    void testIsLoadedListFalse() throws Exception {
+        LazyList<String> lazyList = new LazyList<>(ArrayList::new);
+
+        boolean result = DaoUtils.isLoadedLazyList(lazyList);
+
+        Assertions.assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("Create entity instance")
+    void testCreateEntityInstance() {
+        Class<Person> entityClass = Person.class;
+
+        Person person = DaoUtils.createEntityInstance(entityClass);
+
+        Assertions.assertNotNull(person);
+    }
 }

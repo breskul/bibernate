@@ -1,6 +1,7 @@
 package com.breskul.bibernate.persistence.util;
 
 import com.breskul.bibernate.annotation.*;
+import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
@@ -9,6 +10,7 @@ import jakarta.persistence.FetchType;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -446,5 +448,21 @@ public class DaoUtils {
         var actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
         var relatedEntityType = (Class<?>) actualTypeArgument;
         return relatedEntityType;
+    }
+
+    public static boolean isLoadedLazyList(Collection<?> collection) {
+        if (collection instanceof LazyList<?> lazyList){
+            return lazyList.isLoaded();
+        }
+        return true;
+    }
+
+    public static <T> T createEntityInstance(Class<T> entityClass) {
+        try {
+            return entityClass.getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new InternalException(String.format("Can't create entity instance of type '%s'", entityClass),
+                    "Entity class should have a default constructor");
+        }
     }
 }
