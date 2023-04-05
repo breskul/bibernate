@@ -33,6 +33,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     public static final String TABLE_NOT_FOUND_MESSAGE = "entity is not marked with @Table annotation - mark entity with table annotation";
     public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.test_model.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
     public static final String ID_AND_STRATEGY_MESSAGE = "detached entity is passed to persist - Make sure that you don't set id manually when using @GeneratedValue";
+
     private EntityManager entityManager;
 
     @BeforeEach
@@ -591,7 +592,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         assertEquals(person.getLastName(), selectedPerson.getLastName());
         assertEquals(person.getBirthday(), selectedPerson.getBirthday());
         assertEquals(2, selectedPerson.getNotes().size());
-
     }
 
     @Test
@@ -621,17 +621,113 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         entityManager.persist(person);
         entityManager.getTransaction().commit();
 
-        EntityManagerImpl otherEntityManager = new EntityManagerImpl(dataSource);
-        otherEntityManager.getTransaction().begin();
-        var selectedPerson = otherEntityManager.find(PersonWithoutGeneratedValueWithEagerFetch.class, person.getId());
-        otherEntityManager.getTransaction().commit();
-        otherEntityManager.close();
+        entityManager.clear();
+
+        entityManager.getTransaction().begin();
+        var selectedPerson = entityManager.find(PersonWithoutGeneratedValueWithEagerFetch.class, person.getId());
+        entityManager.getTransaction().commit();
 
         assertEquals(person.getFirstName(), selectedPerson.getFirstName());
         assertEquals(person.getLastName(), selectedPerson.getLastName());
         assertEquals(person.getBirthday(), selectedPerson.getBirthday());
         assertDoesNotThrow(() -> selectedPerson.getNotes().size());
         assertEquals(2, selectedPerson.getNotes().size());
+    }
+
+    @Test
+    @DisplayName("Test dirty checking Flush")
+    public void testDirtyCheckingFlush() {
+        var person = new PersonWithoutGeneratedValueWithEagerFetch();
+        person.setFirstName("Tom");
+        person.setLastName("Cruise");
+        person.setId(50L);
+        person.setBirthday(LocalDateTime.of(1962, Month.JULY, 3, 5, 0, 0).toLocalDate());
+
+        var firstNote = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
+        firstNote.setId(61L);
+        firstNote.setBody("Top Gun: Maverick. 1986");
+        firstNote.setPerson(person);
+
+        person.addNote(firstNote);
+
+        entityManager.getTransaction().begin();
+
+        entityManager.persist(person);
+
+        person.setFirstName("newFirstName");
+        firstNote.setBody("newBody");
+
+        entityManager.flush();
+        entityManager.clear();
+
+        var selectedPerson = entityManager.find(PersonWithoutGeneratedValueWithEagerFetch.class, person.getId());
+        var selectedNode = entityManager.find(NoteWithoutGeneratedValueWithEagerFetchFromPerson.class, firstNote.getId());
+        entityManager.getTransaction().commit();
+        assertEquals(selectedPerson.getFirstName(), person.getFirstName());
+        assertEquals(selectedNode.getBody(), firstNote.getBody());
+    }
+
+    @Test
+    @DisplayName("Test dirty checking Commit")
+    public void testDirtyCheckingCommit() {
+        var person = new PersonWithoutGeneratedValueWithEagerFetch();
+        person.setFirstName("Tom");
+        person.setLastName("Cruise");
+        person.setId(50L);
+        person.setBirthday(LocalDateTime.of(1962, Month.JULY, 3, 5, 0, 0).toLocalDate());
+
+        var firstNote = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
+        firstNote.setId(61L);
+        firstNote.setBody("Top Gun: Maverick. 1986");
+        firstNote.setPerson(person);
+
+        person.addNote(firstNote);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        person.setFirstName("newFirstName");
+        firstNote.setBody("newBody");
+        entityManager.getTransaction().commit();
+        entityManager.clear();
+
+        entityManager.getTransaction().begin();
+        var selectedPerson = entityManager.find(PersonWithoutGeneratedValueWithEagerFetch.class, person.getId());
+        var selectedNode = entityManager.find(NoteWithoutGeneratedValueWithEagerFetchFromPerson.class, firstNote.getId());
+        entityManager.getTransaction().commit();
+        assertEquals(selectedPerson.getFirstName(), person.getFirstName());
+        assertEquals(selectedNode.getBody(), firstNote.getBody());
+    }
+
+    @Test
+    @DisplayName("Test dirty checking for lazy initialization")
+    public void testDirtyCheckingForLazyList() {
+        PersonWithoutGeneratedValue person = new PersonWithoutGeneratedValue();
+        person.setFirstName("Quentin");
+        person.setLastName("Tarantino");
+        person.setId(41L);
+        person.setBirthday(LocalDateTime.of(1963, Month.MARCH, 27, 10, 0, 0).toLocalDate());
+
+        NoteWithoutGeneratedValue firstNote = new NoteWithoutGeneratedValue();
+        firstNote.setId(53L);
+        firstNote.setBody("Pulp Fiction. 1994");
+        firstNote.setPerson(person);
+
+        person.addNote(firstNote);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        entityManager.clear();
+
+        entityManager.getTransaction().begin();
+        var selectedPerson = entityManager.find(PersonWithoutGeneratedValue.class, person.getId());
+        List<NoteWithoutGeneratedValue> list = selectedPerson.getNotes();
+        NoteWithoutGeneratedValue selectedNode = list.get(0);
+
+        entityManager.getTransaction().commit();
+
+        assertEquals(person.getFirstName(), selectedPerson.getFirstName());
     }
 
 }

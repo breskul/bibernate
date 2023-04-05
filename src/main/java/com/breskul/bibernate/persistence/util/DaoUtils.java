@@ -6,7 +6,7 @@ import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import com.breskul.bibernate.persistence.EntityKey;
+import com.breskul.bibernate.persistence.model.EntityKey;
 import jakarta.persistence.FetchType;
 
 import java.lang.annotation.Annotation;
@@ -32,13 +32,12 @@ public class DaoUtils {
      * @return {@link String} A comma-separated string containing the names of all the columns of the database table
      * corresponding to the given JPA entity that do not correspond to collection or primary key fields.
      */
-    public static String getSqlFieldNames(Object entity) {
+    public static String getSqlFieldNamesWithoutId(Object entity) {
         var entityClass = entity.getClass();
         return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> !isCollectionField(field) && !isIdField(field))
                 .map(DaoUtils::resolveColumnName)
                 .collect(Collectors.joining(","));
-
     }
 
     /**
@@ -82,7 +81,22 @@ public class DaoUtils {
         return Optional.ofNullable(field.getAnnotation(Column.class))
                 .map(Column::name)
                 .orElse(field.getName());
+    }
 
+    /**
+     * <p>This method returns a comma-separated list of the values of all the columns of the database table
+     * corresponding to a given JPA entity that do not correspond to collection or primary key fields.</p>
+     *
+     * @param entity {@link Object} the JPA entity for which the list of column values should be returned.
+     * @return {@link String} A comma-separated string containing the values of all the columns of the database table
+     * corresponding to the given JPA entity that do not correspond to collection or primary key fields.
+     */
+    public static String getSqlFieldValuesWithoutId(Object entity) {
+        var entityClass = entity.getClass();
+        return Arrays.stream(entityClass.getDeclaredFields())
+                .filter(field -> !isCollectionField(field) && !isIdField(field))
+                .map(field -> getString(entity, field))
+                .collect(Collectors.joining(","));
     }
 
     /**
@@ -96,10 +110,9 @@ public class DaoUtils {
     public static String getSqlFieldValues(Object entity) {
         var entityClass = entity.getClass();
         return Arrays.stream(entityClass.getDeclaredFields())
-                .filter(field -> !isCollectionField(field) && !isIdField(field))
+                .filter(field -> !isCollectionField(field))
                 .map(field -> getString(entity, field))
                 .collect(Collectors.joining(","));
-
     }
 
     /**
@@ -182,9 +195,8 @@ public class DaoUtils {
         } catch (IllegalAccessException e) {
             var cause = "entity does not have id field value";
             var solution = "make sure that entity has id field value";
-            throw new DaoUtilsException(cause, solution);
+            throw new InternalException(cause, solution);
         }
-
     }
 
     /**
@@ -200,7 +212,7 @@ public class DaoUtils {
         return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Id.class))
                 .findAny()
-                .orElseThrow(() -> new DaoUtilsException(cause, solution));
+                .orElseThrow(() -> new InternalException(cause, solution));
     }
 
     /**
@@ -224,6 +236,7 @@ public class DaoUtils {
                 .filter(field -> field.isAnnotationPresent(OneToMany.class))
                 .toList();
     }
+
     static CascadeType getCascadeType(Field field) {
         var cause = "OneToMany annotation does not have CascadeType";
         var solution = "annotate field with OneToMany annotation and put CascadeType on it";
@@ -231,6 +244,7 @@ public class DaoUtils {
                 .orElseThrow(() -> new JdbcDaoException(cause, solution))
                 .cascade();
     }
+
     static boolean isFieldAllOrRemoveCascade(Field field){
         var cascadeType = getCascadeType(field);
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
@@ -377,7 +391,6 @@ public class DaoUtils {
         return Optional.ofNullable(entityClass.getAnnotation(Table.class))
                 .map(Table::name)
                 .orElse(entityClass.getSimpleName());
-
     }
 
     /**

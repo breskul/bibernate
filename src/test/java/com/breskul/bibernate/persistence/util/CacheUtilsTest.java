@@ -1,6 +1,6 @@
 package com.breskul.bibernate.persistence.util;
 
-import com.breskul.bibernate.persistence.EntityKey;
+import com.breskul.bibernate.persistence.model.EntityKey;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

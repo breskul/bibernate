@@ -1,4 +1,4 @@
-package com.breskul.bibernate.persistence;
+package com.breskul.bibernate.persistence.model;
 
 /**
  * EntityKey record using for cache key

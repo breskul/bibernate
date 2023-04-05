@@ -1,8 +1,8 @@
 package com.breskul.bibernate.persistence;
 
-
 import com.breskul.bibernate.exception.EntityManagerException;
 import com.breskul.bibernate.exception.TransactionException;
+import com.breskul.bibernate.persistence.model.EntityKey;
 import com.breskul.bibernate.persistence.util.CacheUtils;
 import com.breskul.bibernate.persistence.util.DaoUtils;
 import jakarta.persistence.*;
@@ -17,6 +17,7 @@ import java.util.*;
 import java.util.function.Supplier;
 
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
+
 /**
  * <h2>This is the implementation class of the EntityManager interface. This class provides an implementation of the basic operations that can be performed on entities.</h2>
  * <p>Following fields are present:</p>
@@ -33,15 +34,17 @@ public class EntityManagerImpl implements EntityManager {
     private final JdbcDao jdbcDao;
 
     private transient EntityTransactionImpl entityTransaction;
-    private final Map<EntityKey<?>, Object> cache = new HashMap<>();
+    private final PersistenceContext context;
 
     private boolean isOpen;
 
     public EntityManagerImpl(DataSource dataSource) {
         this.dataSource = dataSource;
-        this.jdbcDao = new JdbcDao(cache);
+        this.context = new PersistenceContext();
+        this.jdbcDao = new JdbcDao(context);
         this.isOpen = true;
     }
+
     /**
      * <p>checks if the EntityManager is open. If the EntityManager is closed, an EntityManagerException is thrown.</p>
      */
@@ -50,6 +53,7 @@ public class EntityManagerImpl implements EntityManager {
             throw new EntityManagerException("Entity manager closed", "Need to create new EntityManager instance");
         }
     }
+
     /**
      * <p> Persists the given entity to the database.</p>
      * <p>This method first validates the session, then checks if the entity is a valid entity using the {@link DaoUtils#isValidEntity} method, and finally calls the {@link JdbcDao#persist} to execute the SQL query</p>
@@ -57,16 +61,16 @@ public class EntityManagerImpl implements EntityManager {
      */
     public void persist(Object entity) {
         validateSession();
-        isValidEntity(entity, cache);
+        isValidEntity(entity, context.getCache());
         this.jdbcDao.persist(entity);
     }
-
 
     @Override
     public <T> T merge(T entity) {
         validateSession();
         return null;
     }
+
     /**
      * <p>Removes the given entity from the database. This method first validates the session.</p>
      * <p> Then removes entity itself. The entity is also removed from the cache.</p>
@@ -77,6 +81,7 @@ public class EntityManagerImpl implements EntityManager {
         validateSession();
         this.jdbcDao.remove(entity, cache);
     }
+
     /**
      * <p>Finds the entity with the given primary key in the database. This method first validates the session, then gets the table name and a supplier that fetches the entity from the database using the jdbcDao field and the CacheUtils class.</p>
      * <p>The entity is also cached using the cache field. The method returns the entity cast to the given entity class</p>
@@ -90,7 +95,11 @@ public class EntityManagerImpl implements EntityManager {
         String tableName = DaoUtils.getClassTableName(entityClass);
         Supplier<?> fetchSupplier = () -> jdbcDao.findByIdentifier(entityClass, tableName, primaryKey);
         EntityKey<?> entityKey = EntityKey.of(entityClass, primaryKey);
-        Object result = CacheUtils.processCache(entityKey, cache, fetchSupplier);
+        Object result = CacheUtils.processCache(entityKey, context.getCache(), fetchSupplier);
+        if (Objects.nonNull(result)) {
+            String snapshotValues = DaoUtils.getSqlFieldValues(result);
+            context.addToSnapshot(result, primaryKey, snapshotValues);
+        }
         return entityClass.cast(result);
     }
 
@@ -116,7 +125,7 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public void flush() {
-
+        jdbcDao.compareSnapshots();
     }
 
     @Override
@@ -161,7 +170,7 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public void clear() {
-
+        context.clear();
     }
 
     @Override
@@ -281,7 +290,7 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public void close() {
-        cache.clear();
+        context.clear();
         this.isOpen = false;
     }
 
@@ -304,7 +313,7 @@ public class EntityManagerImpl implements EntityManager {
 
     private EntityTransaction accessTransaction() {
         if (this.entityTransaction == null) {
-            this.entityTransaction = new EntityTransactionImpl(this.dataSource, this.jdbcDao, cache);
+            this.entityTransaction = new EntityTransactionImpl(this.dataSource, this.jdbcDao, context);
         }
         return this.entityTransaction;
     }

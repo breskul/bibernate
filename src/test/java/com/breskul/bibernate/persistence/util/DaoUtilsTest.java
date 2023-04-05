@@ -3,7 +3,6 @@ package com.breskul.bibernate.persistence.util;
 import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.annotation.enums.CascadeType;
 import com.breskul.bibernate.annotation.enums.Strategy;
-import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.persistence.util.test_model.*;
@@ -24,13 +23,13 @@ class DaoUtilsTest {
     @Test
     @DisplayName("Test getIdentifierField method")
     void testGetIdentifierField() {
-        assertThrows(DaoUtilsException.class, () -> DaoUtils.getIdentifierField(Note.class));
+        assertThrows(InternalException.class, () -> DaoUtils.getIdentifierField(Note.class));
     }
 
     @Test
     @DisplayName("Test getIdentifierFieldName method")
     void testGetIdentifierFieldName() {
-        assertThrows(DaoUtilsException.class, () -> DaoUtils.getIdentifierFieldName(Note.class));
+        assertThrows(InternalException.class, () -> DaoUtils.getIdentifierFieldName(Note.class));
     }
 
     @Test
@@ -39,7 +38,7 @@ class DaoUtilsTest {
         Note note = new Note();
         note.setId(1L);
         note.setBody("my note");
-        assertThrows(DaoUtilsException.class, () -> DaoUtils.getIdentifierValue(note));
+        assertThrows(InternalException.class, () -> DaoUtils.getIdentifierValue(note));
     }
 
     @Test
@@ -111,7 +110,7 @@ class DaoUtilsTest {
     @DisplayName("Test GetSqlFieldNames with SEQUENCE")
     void testGetSqlFieldNamesSequence() {
         var entity = new EntitySequence();
-        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        var sqlFieldNames = DaoUtils.getSqlFieldNamesWithoutId(entity);
         assertEquals("name,age", sqlFieldNames);
     }
 
@@ -119,7 +118,7 @@ class DaoUtilsTest {
     @DisplayName("Test GetSqlFieldNames with IDENTITY")
     void testGetSqlFieldNamesIdentity() {
         var entity = new EntityIdentity();
-        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        var sqlFieldNames = DaoUtils.getSqlFieldNamesWithoutId(entity);
         assertEquals("name,age", sqlFieldNames);
     }
 
@@ -128,7 +127,7 @@ class DaoUtilsTest {
     @DisplayName("Test get sql field names with AUTO")
     void testGetSqlFieldNamesAuto() {
         var entity = new EntityAuto();
-        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        var sqlFieldNames = DaoUtils.getSqlFieldNamesWithoutId(entity);
         assertEquals("name,age", sqlFieldNames);
     }
 
