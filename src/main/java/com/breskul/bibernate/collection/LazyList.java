@@ -14,7 +14,7 @@ import java.util.stream.Stream;
  */
 public class LazyList<T> implements List<T> {
 
-    private Supplier<List<?>> collectionSupplier;
+    private final Supplier<List<?>> collectionSupplier;
     private List<T> internalList;
 
     public LazyList(Supplier<List<?>> collectionSupplier) {
@@ -30,6 +30,10 @@ public class LazyList<T> implements List<T> {
             }
         }
         return internalList;
+    }
+
+    public boolean isLoaded() {
+        return internalList != null;
     }
 
     @Override

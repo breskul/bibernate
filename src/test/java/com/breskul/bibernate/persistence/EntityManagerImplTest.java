@@ -543,6 +543,30 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
             assertEquals("My name is Ron", managedPerson.getNotes().get(0).getBody());
 
         });
+    }
 
+    @Test
+    @DisplayName("Merge Transient entity.")
+    public void testMergeTransientEntity() {
+        Person person = new Person();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        doInLocalEntityManager(em -> {
+            Person managedPerson = em.merge(person);
+
+            assertEquals("Harry", managedPerson.getFirstName());
+            assertEquals("My name is Harry Potter", managedPerson.getNotes().get(0).getBody());
+
+        });
     }
 }

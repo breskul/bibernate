@@ -1,6 +1,7 @@
 package com.breskul.bibernate.persistence;
 
 
+import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.EntityManagerException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.util.CacheUtils;
@@ -14,6 +15,7 @@ import jakarta.persistence.metamodel.Metamodel;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -66,18 +68,40 @@ public class EntityManagerImpl implements EntityManager {
     @Override
     public <T> T merge(T entity) {
         validateSession();
-        Object id = getIdentifierValue(entity);
-        Class<T> entityClass = (Class<T>) entity.getClass();
-        T newEntity;
 
-        if (cache.containsKey(EntityKey.of(entityClass, id))) {
+        if (entity == null) {
+            throw new EntityManagerException("Attempt to merge null entity", "Check entity");
+        }
+
+        Class<T> entityClass = (Class<T>) entity.getClass();
+        Object id = getIdentifierValue(entity);
+        EntityKey<?> entityKey = EntityKey.of(entityClass, id);
+
+        if (cache.containsKey(entityKey)) {
             return entity;
         }
 
-        newEntity = find(entityClass, id);
+        T newEntity = findOrCreateEntity(entityClass, id);
         mergeEntities(newEntity, entity);
 
+        cache.put(entityKey, newEntity);
         return newEntity;
+    }
+
+    private <T> T findOrCreateEntity (Class<T> entityClass, Object id) {
+        EntityKey<?> entityKey = EntityKey.of(entityClass, id);
+        T entity;
+        if (id == null) {
+            entity = createEntityInstance(entityClass);
+            cache.put(entityKey, entity);
+        } else {
+            entity = find(entityClass, id);
+            if (entity == null) {
+                entity = createEntityInstance(entityClass);
+                cache.put(entityKey, entity);
+            }
+        }
+        return entity;
     }
 
     private <T> void mergeEntities(T newEntity, T oldEntity) {
@@ -85,16 +109,17 @@ public class EntityManagerImpl implements EntityManager {
             if (isRegularField(declaredField)) {
                 Object newEntityFieldValue = getFieldValue(newEntity, declaredField);
                 Object oldEntityFieldValue = getFieldValue(oldEntity, declaredField);
-                if (!newEntityFieldValue.equals(oldEntityFieldValue)) {
+                if (newEntityFieldValue == null || !newEntityFieldValue.equals(oldEntityFieldValue)) {
                     setValueToField(newEntity, oldEntityFieldValue, declaredField);
                 }
             } else if (isEntityCollectionField(declaredField)) {
                 Collection<Object> newEntityFieldValue = (Collection<Object>)getFieldValue(newEntity, declaredField);
                 Collection<?> oldEntityFieldValue = (Collection<?>)getFieldValue(oldEntity, declaredField);
                 newEntityFieldValue.clear();
-                // TODO: check if oldEntityFieldValue is LazyList then no merge required
-                for (Object element : oldEntityFieldValue){
-                    newEntityFieldValue.add(merge(element));
+                if (isLoadedLazyList(oldEntityFieldValue)) {
+                    for (Object element : oldEntityFieldValue) {
+                        newEntityFieldValue.add(merge(element));
+                    }
                 }
             } else if (isEntityField(declaredField)) {
                 Object oldEntityFieldValue = getFieldValue(oldEntity, declaredField);
@@ -103,6 +128,7 @@ public class EntityManagerImpl implements EntityManager {
             }
         }
     }
+
     /**
      * <p>Removes the given entity from the database. This method first validates the session.</p>
      * <p> Then gets the table name, identifier name, and identifier value of the entity using the DaoUtils class,and finally calls the {@link JdbcDao#deleteByIdentifier} method of the jdbcDao field to execute the SQL query. The entity is also removed from the cache.</p>
