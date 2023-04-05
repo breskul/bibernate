@@ -28,7 +28,11 @@ The list of all features with code examples you can find in this guide.
     - [@OneToOne](#onetoone)
     - [@OneToMany](#onetomany)
     - [@OneToOne](#onetoone)
-- [Cascade](#entity-manager)
+ - [Strategy](#strategy)
+   - [SEQUENCE](#sequence)
+   - [IDENTITY](#identity)
+   - [AUTO](#auto)
+- [Cascade](#cascade)
   - [ALL](#Strategy-ALL)
   - [PERSIST](#Strategy-PERSIST)
   - [MERGE](#Strategy-MERGE)
@@ -135,21 +139,20 @@ public class DemoApp {
 ## Technologies
 ***
 
-  Requirements                |  Reason           
-------------------------------|------------------------------
- `Java 17 LTS`           	  |  Application              
- `Maven version 3.6.3+` 	  |  Builder 	                 
+| Requirements              | Reason      |
+|---------------------------|-------------|
+| `Java 17 LTS`           	 | Application |
+| `Maven version 3.6.3+` 	  | Builder 	   |
 
 #### Technology stack
 
-  Technology name             |  Version
-------------------------------|------------------------------
-  `JDK`        	              |  `17 LTS`                           
-  `HikariCP`        	      |  `5.0.1`                            
-  `lombok`        	          |  `1.18.24`                          
-  `log4j-core`        	      |  `2.7`
-  `JUnit`                     |  `5.9.2`
-
+| Technology name       | Version   |
+|-----------------------|-----------|
+| `JDK`        	        | `17 LTS`  |
+| `HikariCP`        	   | `5.0.1`   |
+| `lombok`        	     | `1.18.24` |
+| `log4j-core`        	 | `2.7`     |
+| `JUnit`               | `5.9.2`   |
 
 ## Entity Mapping
 ##### @OneToOne
@@ -170,6 +173,14 @@ public class DemoApp {
 > Has `optional` parameter which shows whether the association is optional.
 > If it set to false then a non-null relationship must always exist.
 > His parameter is `true` by default.
+
+## Strategy
+##### Sequence
+>  This strategy uses a database sequence to generate primary keys. The sequence is created in the database and is incremented each time a new row is inserted.
+##### Identity
+>  The database generates the primary key values as new rows are inserted, and the generated ID is assigned to the entity object.
+##### Auto
+>  User have to specify his own id for the newly inserted entity
 
 ## Cascade
 ##### Strategy-ALL
@@ -304,6 +315,101 @@ and after operations need to make commit or rollback transaction
 >```java
 > entityManager.close(); will clear first level cache
 > ```
+### Entity Mapping
+To correctly create or map tables following annotations should be used
+> * @Entity: This annotation is used to specify that the class is an entity.
+> * @Table: This annotation is used to specify the database table that the entity maps to.
+> * @Id: This annotation is used to specify the primary key of the entity.
+> * @GeneratedValue: This annotation is used to specify how the primary key should be generated.
+> * @Column: This annotation is used to specify the mapping between a property and a column in the database table.
+>
+> Example of a single table
+> ```java
+> import lombok.Data;
+> import lombok.ToString;
+> 
+> @Entity
+> @Data
+> @ToString
+> @Table(name = "persons")
+> public class Person {
+>
+>	        @Id
+>	        @GeneratedValue(strategy = Strategy.IDENTITY)
+>	        private Long id;
+> 
+>	        @Column(name = "first_name")
+>	        private String firstName;
+> 
+>	        @Column(name = "last_name")
+>	        private String lastName;
+>
+>
+>	        @Column(name = "birthday")
+>	        private LocalDate birthday;
+>   }
+> ```
+> Example of table with one-to-many relation 
+> ```java
+> import lombok.Data;
+> import lombok.ToString;
+> 
+> @Entity
+> @Data
+> @ToString
+> @Table(name = "persons")
+> public class Person {
+>
+>           @Id
+>           @GeneratedValue(strategy = Strategy.IDENTITY)
+>           private Long id;
+> 
+>           @Column(name = "first_name")
+>           private String firstName;
+> 
+>           @Column(name = "last_name")
+>           private String lastName;
+>
+>
+>           @Column(name = "birthday")
+>           private LocalDate birthday;
+> 
+>           @OneToMany
+>           private List<NoteComplex> notes = new ArrayList<>();
+>
+>           public void addNote(NoteComplex note) {
+>               note.setPerson(this);
+>               notes.add(note);
+>           }
+>           public void removeNote(NoteComplex note) {
+>               note.setPerson(null);
+>               notes.remove(note);
+>           }
+>   }
+> 
+> @Entity
+> @Data
+> @Table(name = "notes")
+> @ToString
+> public class NoteComplex {
+>
+>    @Id
+>    @GeneratedValue(strategy = SEQUENCE)
+>    private Long id; 
+> 
+>    @Column(name = "body")
+>    private String body;
+>
+>    @Column(name = "created_at")
+>    private LocalDateTime createdAt = LocalDateTime.now();
+>
+>    @ManyToOne
+>    @JoinColumn(name = "person_id")
+>    private Person person;
+>
+> }
+> ```
+> 
 
 ## Our BRESKUL Team
 ***
