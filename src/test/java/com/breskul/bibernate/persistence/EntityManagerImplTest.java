@@ -6,6 +6,10 @@ import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.LazyInitializationException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.test_model.*;
+import com.breskul.bibernate.persistence.test_model.cascadepersist.CompanyCascadePersist;
+import com.breskul.bibernate.persistence.test_model.cascadepersist.NoteComplexCascadePersist;
+import com.breskul.bibernate.persistence.test_model.cascadepersist.PersonCascadePersist;
+import com.breskul.bibernate.persistence.util.DaoUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.*;
@@ -17,7 +21,6 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,8 +33,6 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     public static final String TABLE_NOT_FOUND_MESSAGE = "entity is not marked with @Table annotation - mark entity with table annotation";
     public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.test_model.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
     public static final String ID_AND_STRATEGY_MESSAGE = "detached entity is passed to persist - Make sure that you don't set id manually when using @GeneratedValue";
-    public static final String WITHOUT_ID_AND_STRATEGY = "annotation GeneratedValue is not found - mark class with the GeneratedValue annotation";
-
     private EntityManager entityManager;
 
     @BeforeEach
@@ -263,13 +264,133 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     }
 
     @Test
-    @DisplayName("Test remove method without transaction")
-    public void removeMethodWithoutTransaction() {
+    @DisplayName("Test remove method")
+    public void testRemoveMethod() {
         Person person = new Person();
-        person.setId(10L);
-        person.setFirstName("user");
+        person.setFirstName(FIRST_NAME);
+        person.setLastName(LAST_NAME);
+        person.setBirthday(BIRTHDAY);
 
-        Assertions.assertThrows(TransactionException.class, () -> entityManager.remove(person));
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody(NOTE_BODY);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody(NOTE_BODY);
+
+        person.addNote(note1);
+        person.addNote(note2);
+
+        Company company1 = new Company();
+        company1.setName("company1");
+
+        Company company2 = new Company();
+        company2.setName("company2");
+
+        Company company3 = new Company();
+        company3.setName("company3");
+
+        Company company4 = new Company();
+        company4.setName("company4");
+
+        note1.addCompany(company1);
+        note1.addCompany(company2);
+
+        note2.addCompany(company3);
+        note2.addCompany(company4);
+
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+
+        entityTransaction.begin();
+        entityManager.persist(person);
+        entityTransaction.commit();
+
+
+        entityTransaction.begin();
+        entityManager.remove(person);
+        entityTransaction.commit();
+
+        checkEntityDoesNotExist(person);
+        checkEntityDoesNotExist(note1);
+        checkEntityDoesNotExist(note2);
+        checkEntityDoesNotExist(company1);
+        checkEntityDoesNotExist(company2);
+        checkEntityDoesNotExist(company3);
+        checkEntityDoesNotExist(company4);
+    }
+    @Test
+    @DisplayName("Test remove method throws exception")
+    public void testRemoveMethodThrowsException() {
+        PersonCascadePersist person = new PersonCascadePersist();
+        person.setFirstName(FIRST_NAME);
+        person.setLastName(LAST_NAME);
+        person.setBirthday(BIRTHDAY);
+
+        NoteComplexCascadePersist note1 = new NoteComplexCascadePersist();
+        note1.setBody(NOTE_BODY);
+
+        NoteComplexCascadePersist note2 = new NoteComplexCascadePersist();
+        note2.setBody(NOTE_BODY);
+
+        person.addNote(note1);
+        person.addNote(note2);
+
+        CompanyCascadePersist company1 = new CompanyCascadePersist();
+        company1.setName("company1");
+
+        CompanyCascadePersist company2 = new CompanyCascadePersist();
+        company2.setName("company2");
+
+        CompanyCascadePersist company3 = new CompanyCascadePersist();
+        company3.setName("company3");
+
+        CompanyCascadePersist company4 = new CompanyCascadePersist();
+        company4.setName("company4");
+
+        note1.addCompany(company1);
+        note1.addCompany(company2);
+
+        note2.addCompany(company3);
+        note2.addCompany(company4);
+
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+
+        entityTransaction.begin();
+        entityManager.persist(person);
+        entityTransaction.commit();
+
+
+        entityTransaction.begin();
+        assertThrows(JdbcDaoException.class, () -> entityManager.remove(person));
+        assertThrows(JdbcDaoException.class, () -> entityManager.remove(note1));
+        assertThrows(JdbcDaoException.class, () -> entityManager.remove(note2));
+        entityTransaction.commit();
+
+        entityTransaction.begin();
+        entityManager.remove(company1);
+        entityManager.remove(company2);
+        entityManager.remove(company3);
+        entityManager.remove(company4);
+        entityTransaction.commit();
+
+        checkEntityDoesNotExist(company1);
+        checkEntityDoesNotExist(company2);
+        checkEntityDoesNotExist(company3);
+        checkEntityDoesNotExist(company4);
+
+    }
+    private void checkEntityDoesNotExist( Object entity) {
+        var table = DaoUtils.getClassTableName(entity.getClass());
+        var identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
+        var identifierValue = DaoUtils.getIdentifierValue(entity);
+        String query = String.format("SELECT * FROM %s where %s = %s", table, identifierName, identifierValue);
+        try (Connection connection = dataSource.getConnection()) {
+            PreparedStatement preparedStatement = connection.prepareStatement(query);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            assertFalse(resultSet.next());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test

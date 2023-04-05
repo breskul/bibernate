@@ -1,6 +1,6 @@
 package com.breskul.bibernate.persistence;
 
-import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
@@ -151,6 +151,7 @@ public class JdbcDao {
     private Object insertEntity(String tableName, String sqlFieldNames, String sqlFieldValues) {
         var formattedInsertSql = String.format(INSERT_QUERY, tableName, sqlFieldNames, sqlFieldValues);
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedInsertSql, Statement.RETURN_GENERATED_KEYS)) {
+            logger.info("SQL: {}", preparedStatement);
             preparedStatement.executeUpdate();
             preparedStatement.getGeneratedKeys().next();
             return preparedStatement.getGeneratedKeys().getObject(1);
@@ -238,26 +239,56 @@ public class JdbcDao {
     }
 
     /**
-     * <p>Deletes an entity from the database using its identifier</p>
-     *
-     * @param tableName      the name of the table in which to delete the entity
-     * @param identifierName the name of the identifier column
-     * @param identifier     the identifier of the entity to delete
+     * <p>takes a parent entity and a cache of related entities as parameters and uses a
+     * stack-based algorithm to determine the order in which entities should be deleted to avoid violating foreign key constraints.</p>
+     * @param parentEntity - {@link Object} entity to be deleted
+     * @param cache - {@link Map} cache of current entities. Once entity is deleted, it is removed from cache
      */
-    public void deleteByIdentifier(String tableName, String identifierName, Object identifier) {
-        String formattedDeleteStatement = String.format(DELETE_STATEMENT, tableName, identifierName);
-        var cause = "error occurred while executing delete statement";
-        var solution = "check your sql query";
-        try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
-            preparedStatement.setObject(1, identifier);
-            logger.info("SQL: {}", preparedStatement);
-            int rowDeleted = preparedStatement.executeUpdate();
-            if (rowDeleted == 0) {
-                throw new JdbcDaoException(cause);
+    public void remove(Object parentEntity, Map<EntityKey<?>, Object> cache) {
+        var stack = buildStackOfEntitiesToDelete(parentEntity);
+        var cause = "could not execute your delete statement";
+        while (!stack.isEmpty()){
+            var entity = stack.pop();
+            var tableName = DaoUtils.getClassTableName(entity.getClass());
+            var identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
+            var identifierValue = DaoUtils.getIdentifierValue(entity);
+            var formattedSqlQuery = String.format(DELETE_STATEMENT, tableName, identifierName);
+            try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedSqlQuery)) {
+                preparedStatement.setObject(1, identifierValue);
+                logger.info("SQL: {}", preparedStatement);
+                if (preparedStatement.executeUpdate() != 1){
+                    throw new JdbcDaoException(cause);
+                }
+                EntityKey<?> entityKey = EntityKey.of(entity.getClass(), identifierValue);
+                cache.remove(entityKey);
+            } catch (SQLException exception) {
+                throw new JdbcDaoException(cause, exception);
             }
-        } catch (SQLException e) {
-            throw new JdbcDaoException(cause, solution, e);
+
         }
+
+    }
+    /**
+     * <p>returns a stack of entities to be deleted in the order in which they should be deleted. Child entities are deleted first</p>
+     * @param parentEntity - {@link Object} root node of the tree
+     * @return {@link Stack} of entities
+     */
+    private Stack<Object> buildStackOfEntitiesToDelete(Object parentEntity){
+        var stack = new Stack<>();
+        var queue = new ArrayDeque<>();
+        queue.add(parentEntity);
+        stack.add(parentEntity);
+        while (!queue.isEmpty()){
+            var currentEntity = queue.poll();
+            List<Field> collecionFieldList = DaoUtils.getCascadeAllOrRemoveListFields(currentEntity.getClass());
+            for (Field collectionField: collecionFieldList){
+                var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
+                queue.addAll(childEntities);
+                stack.addAll(childEntities);
+            }
+
+        }
+        return stack;
     }
 
     /**

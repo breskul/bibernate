@@ -1,5 +1,6 @@
 package com.breskul.bibernate.annotation;
 
+import com.breskul.bibernate.annotation.enums.CascadeType;
 import jakarta.persistence.FetchType;
 
 import java.lang.annotation.ElementType;
@@ -13,6 +14,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface OneToMany {
+    CascadeType cascade() default CascadeType.ALL;
 
     /**
      * (Optional) Whether the association should be lazily loaded or
