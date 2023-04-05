@@ -1,4 +1,4 @@
-package com.breskul.bibernate.persistence.testmodel;
+package com.breskul.bibernate.persistence.test_model;
 
 import com.breskul.bibernate.annotation.*;
 import lombok.Data;
@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Data
 @Table(name = "notes")
 @EqualsAndHashCode(exclude = "person")
-public class NoteWithoutGeneratedValue {
+public class NoteWithoutGeneratedValueWithEagerFetchFromPerson {
 
     @Id
     private Long id;
@@ -21,5 +21,5 @@ public class NoteWithoutGeneratedValue {
 
     @ManyToOne
     @JoinColumn(name = "person_id")
-    private PersonWithoutGeneratedValue person;
+    private PersonWithoutGeneratedValueWithEagerFetch person;
 }

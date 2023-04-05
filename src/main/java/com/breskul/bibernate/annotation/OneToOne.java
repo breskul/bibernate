@@ -6,11 +6,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies a single-valued association to another entity class that has many-to-one multiplicity.
+ * Specifies a single-valued association to another entity that has one-to-one multiplicity.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
-public @interface ManyToOne {
+public @interface OneToOne {
 
     /**
      * (Optional) Whether the association is optional. If set

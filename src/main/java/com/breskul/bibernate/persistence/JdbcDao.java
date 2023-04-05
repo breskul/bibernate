@@ -1,6 +1,7 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
@@ -60,7 +61,7 @@ public class JdbcDao {
                 sqlFieldValues = id + "," + sqlFieldValues;
                 setIdentifierInEntity(entity, identifierField, id);
                 insertEntity(tableName, sqlFieldNames, sqlFieldValues);
-            } else if (strategy.equals(Strategy.IDENTITY)){
+            } else if (strategy.equals(Strategy.IDENTITY)) {
                 id = insertEntity(tableName, sqlFieldNames, sqlFieldValues);
                 setIdentifierInEntity(entity, identifierField, id);
             } else {
@@ -77,11 +78,13 @@ public class JdbcDao {
         }
 
     }
+
     /**
      * <p>This method sets the identifier field of the given entity with the given identifier value.</p>
-     * @param entity {@link Object} entity in which identifier value will be set
+     *
+     * @param entity          {@link Object} entity in which identifier value will be set
      * @param identifierField {@link Field} identifier field
-     * @param id {@link Object} value which would be inserted into entity
+     * @param id              {@link Object} value which would be inserted into entity
      */
     private static void setIdentifierInEntity(Object entity, Field identifierField, Object id) {
         identifierField.setAccessible(true);
@@ -91,12 +94,12 @@ public class JdbcDao {
             throw new RuntimeException(e);
         }
     }
+
     /**
      * <p>This method builds a tree of dependent entities starting from the given entity, which is used to determine the order in which the entities should be persisted.</p>
      *
      * @param entityToSave {@link Object} the JPA entity for which the list of column names should be returned.
      * @return {@link EntityToInsertNode} the parent node with all childes dependencies entities
-
      */
     private EntityToInsertNode buildTreeDependencyFromParentEntity(Object entityToSave) {
         EntityToInsertNode parentEntityToInsertNode = new EntityToInsertNode(entityToSave, new ArrayList<>());
@@ -120,8 +123,10 @@ public class JdbcDao {
         }
         return parentEntityToInsertNode;
     }
+
     /**
      * <p>This method executes the given sequence query and returns the next value from the sequence.</p>
+     *
      * @param sequenceQuery {@link String} formatted query executed in database
      * @return id {@link Object} from database
      */
@@ -134,10 +139,12 @@ public class JdbcDao {
             throw new JdbcDaoException("Can't execute query %s".formatted(sequenceQuery), "Make sure that sequence match the pattern 'tableName_seq'", e);
         }
     }
+
     /**
      * <p>This method inserts an entity into the specified table in the database and returns the generated identifier value.</p>
-     * @param tableName {@link String} - name of the table
-     * @param sqlFieldNames {@link String} - name of the sql field names for the given entity
+     *
+     * @param tableName      {@link String} - name of the table
+     * @param sqlFieldNames  {@link String} - name of the sql field names for the given entity
      * @param sqlFieldValues {@link String} - values of the sql field names for the given entity
      * @return id {@link Object} - identifier for the inserted entity
      */
@@ -164,27 +171,31 @@ public class JdbcDao {
     }
 
     /**
-      * <p>Finds an entity by its identifier</p>
-      * @param entityType {@link Class} the class of the entity to find
-      * @param tableName {@link String} the name of the table in which to search for the entity
-      * @param identifier {@link Object} the identifier of the entity to find
-      * @param <T> the type of the entity to find
-      * @return the entity if found, null otherwise
+     * <p>Finds an entity by its identifier</p>
+     *
+     * @param entityType {@link Class} the class of the entity to find
+     * @param tableName  {@link String} the name of the table in which to search for the entity
+     * @param identifier {@link Object} the identifier of the entity to find
+     * @param <T>        the type of the entity to find
+     * @return the entity if found, null otherwise
      */
     public <T> T findByIdentifier(Class<T> entityType, String tableName, Object identifier) {
         Field idField = DaoUtils.getIdentifierField(entityType);
         return findOneBy(entityType, tableName, idField, identifier);
     }
+
     /**
      * <p>Finds all entities of the given class that have a field with a given value</p>
-     * @param entityType {@link Class}the class of the entity to find
-     * @param tableName {@link String}the name of the table in which to search for the entities
-     * @param field {@link Field}the field in which to search for the value
-     * @param columnValue {@link Object} the value to search for
-     * @param <T> the type of the entity to find
+     *
+     * @param entityType   {@link Class}the class of the entity to find
+     * @param tableName    {@link String}the name of the table in which to search for the entities
+     * @param field        {@link Field}the field in which to search for the value
+     * @param columnValue  {@link Object} the value to search for
+     * @param fieldsToSkip set of {@link Field}s to skip from loading to exclude circular dependency.
+     * @param <T>          the type of the entity to find
      * @return a list {@link List} of entities that have the given value in the given field
      */
-    public <T> List<T> findAllBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
+    public <T> List<T> findAllBy(Class<T> entityType, String tableName, Field field, Object columnValue, Set<Field> fieldsToSkip) {
         final var alias = tableName.substring(0, 1).toLowerCase();
         var columnName = DaoUtils.getColumnName(field);
         String formattedDeleteStatement =
@@ -196,7 +207,7 @@ public class JdbcDao {
             logger.info("SQL: {}", preparedStatement);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                var entity = createEntityFromResultSet(entityType, resultSet);
+                var entity = createEntityFromResultSet(entityType, resultSet, fieldsToSkip);
                 list.add(entity);
             }
         } catch (SQLException exception) {
@@ -204,17 +215,19 @@ public class JdbcDao {
         }
         return list;
     }
+
     /**
      * <p>Finds an entity of the given class that has a field with a given value</p>
-     * @param entityType {@link Class} the class of the entity to find
-     * @param tableName {@link String} the name of the table in which to search for the entity
-     * @param field {@link Field} the field in which to search for the value
+     *
+     * @param entityType  {@link Class} the class of the entity to find
+     * @param tableName   {@link String} the name of the table in which to search for the entity
+     * @param field       {@link Field} the field in which to search for the value
      * @param columnValue {@link Object} the value to search for
-     * @param <T> the type of the entity to find
+     * @param <T>         the type of the entity to find
      * @return the entity if found, null otherwise
      */
     public <T> T findOneBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
-        List<T> resultList = findAllBy(entityType, tableName, field, columnValue);
+        List<T> resultList = findAllBy(entityType, tableName, field, columnValue, Collections.EMPTY_SET);
         if (resultList.size() > 1) {
             throw new JdbcDaoException("The result must contain exactly one row");
         } else if (resultList.size() == 1) {
@@ -223,11 +236,13 @@ public class JdbcDao {
             return null;
         }
     }
+
     /**
      * <p>Deletes an entity from the database using its identifier</p>
-     * @param tableName the name of the table in which to delete the entity
+     *
+     * @param tableName      the name of the table in which to delete the entity
      * @param identifierName the name of the identifier column
-     * @param identifier the identifier of the entity to delete
+     * @param identifier     the identifier of the entity to delete
      */
     public void deleteByIdentifier(String tableName, String identifierName, Object identifier) {
         String formattedDeleteStatement = String.format(DELETE_STATEMENT, tableName, identifierName);
@@ -235,7 +250,7 @@ public class JdbcDao {
         var solution = "check your sql query";
         try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
             preparedStatement.setObject(1, identifier);
-            logger.info("SQL:" + preparedStatement);
+            logger.info("SQL: {}", preparedStatement);
             int rowDeleted = preparedStatement.executeUpdate();
             if (rowDeleted == 0) {
                 throw new JdbcDaoException(cause);
@@ -244,43 +259,33 @@ public class JdbcDao {
             throw new JdbcDaoException(cause, solution, e);
         }
     }
+
     /**
      * <p>creates a Java object of a given entity class from the ResultSet obtained from a database query.</p>
-     * @param entityType {@link Class} A class object representing the type of the entity to be created.
-     * @param resultSet {@link ResultSet} object representing the result set obtained from a database query.
+     *
+     * @param entityType   {@link Class} A class object representing the type of the entity to be created.
+     * @param resultSet    {@link ResultSet} object representing the result set obtained from a database query.
+     * @param fieldsToSkip set of {@link Field}s to skip from loading to exclude circular dependency.
      * @return {@link Object} returns the entity representation of the sql row entry in database
      */
-    public <T> T createEntityFromResultSet(Class<T> entityType, ResultSet resultSet) throws SQLException {
+    public <T> T createEntityFromResultSet(Class<T> entityType, ResultSet resultSet, Set<Field> fieldsToSkip) throws SQLException {
         T entity;
         try {
             Constructor<T> constructor = entityType.getConstructor();
             entity = constructor.newInstance();
             for (var field : entityType.getDeclaredFields()) {
-                field.setAccessible(true);
-                if (DaoUtils.isRegularField(field)) {
-                    logger.debug("Setting regular column field");
-                    var columnName = DaoUtils.getColumnName(field);
-                    Object columnValue = resultSet.getObject(columnName);
-                    if (columnValue instanceof Timestamp tms) {
-                        Class<?> fieldType = field.getType();
-                        if (fieldType == LocalDateTime.class) {
-                            field.set(entity, tms.toLocalDateTime());
-                        } else if (fieldType == LocalDate.class) {
-                            field.set(entity, tms.toLocalDateTime().toLocalDate());
-                        }
-                    } else {
-                        field.set(entity, columnValue);
+                if (fieldsToSkip == null || fieldsToSkip.isEmpty() || !fieldsToSkip.contains(field)) {
+                    field.setAccessible(true);
+                    if (DaoUtils.isRegularField(field)) {
+                        logger.debug("Setting regular column field");
+                        field.set(entity, setSimpleFieldValue(resultSet, field));
+                    } else if (isEntityField(field)) {
+                        logger.debug("Setting toOne related entity");
+                        field.set(entity, getSingleEntityFieldValue(resultSet, field));
+                    } else if (isEntityCollectionField(field)) {
+                        logger.debug("Setting lazy list for toMany related entities");
+                        field.set(entity, getCollectionEntityFieldValue(entityType, entity, field));
                     }
-                } else if (isEntityField(field)) {
-                    logger.debug("Setting toOne related entity");
-                    var relatedEntityType = field.getType();
-                    var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
-                    var joinColumnName = DaoUtils.resolveFieldName(field);
-                    var joinColumnValue = resultSet.getObject(joinColumnName);
-                    var relatedEntity = findByIdentifier(relatedEntityType, relatedEntityTableName, joinColumnValue);
-                    field.set(entity, relatedEntity);
-                } else if (isEntityCollectionField(field)) {
-                    logger.debug("Setting lazy list for toMany related entities");
                 }
             }
         } catch (InstantiationException exception) {
@@ -295,4 +300,48 @@ public class JdbcDao {
         }
         return entity;
     }
+
+    private static Object setSimpleFieldValue(ResultSet resultSet, Field field) throws SQLException {
+        Object result;
+        var columnName = DaoUtils.getColumnName(field);
+        Object columnValue = resultSet.getObject(columnName);
+        if (columnValue instanceof Timestamp tms) {
+            Class<?> fieldType = field.getType();
+            if (fieldType == LocalDateTime.class) {
+                result = tms.toLocalDateTime();
+            } else if (fieldType == LocalDate.class) {
+                result = tms.toLocalDateTime().toLocalDate();
+            } else {
+                result = columnValue;
+            }
+        } else {
+            result = columnValue;
+        }
+        return result;
+    }
+
+    private Object getSingleEntityFieldValue(ResultSet resultSet, Field field) throws SQLException {
+        var relatedEntityType = field.getType();
+        var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
+        var joinColumnName = DaoUtils.resolveFieldName(field);
+        var joinColumnValue = resultSet.getObject(joinColumnName);
+        return findByIdentifier(relatedEntityType, relatedEntityTableName, joinColumnValue);
+    }
+
+    private <T> List<T> getCollectionEntityFieldValue(Class<T> entityType, T entity, Field field) {
+        List<T> resultList;
+        var relatedEntityType = DaoUtils.getEntityCollectionElementType(field);
+        var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
+        var entityFieldInRelatedEntity = DaoUtils.getRelatedEntityField(entityType, relatedEntityType);
+        var entityId = DaoUtils.getIdentifierValue(entity);
+        var relatedEntityFieldsToSkip = Collections.singleton(entityFieldInRelatedEntity);
+        if (DaoUtils.isEntityCollectionFieldIsLazy(field)) {
+            resultList = new LazyList<>(() -> findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId, relatedEntityFieldsToSkip));
+        } else {
+            resultList = (List<T>) findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId, relatedEntityFieldsToSkip);
+        }
+        return resultList;
+    }
+
+
 }

@@ -3,8 +3,9 @@ package com.breskul.bibernate.persistence;
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.EntityManagerException;
 import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.exception.LazyInitializationException;
 import com.breskul.bibernate.exception.TransactionException;
-import com.breskul.bibernate.persistence.testmodel.*;
+import com.breskul.bibernate.persistence.test_model.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.*;
@@ -16,8 +17,10 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class EntityManagerImplTest extends AbstractDataSourceTest {
     public static final String FIRST_NAME = "Serhii";
@@ -25,7 +28,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     public static final LocalDate BIRTHDAY = LocalDate.of(2023, Month.JANUARY, 1);
     public static final String NOTE_BODY = "WOW, my brain is steaming!";
     public static final String TABLE_NOT_FOUND_MESSAGE = "entity is not marked with @Table annotation - mark entity with table annotation";
-    public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.testmodel.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
+    public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.test_model.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
     public static final String ID_AND_STRATEGY_MESSAGE = "detached entity is passed to persist - Make sure that you don't set id manually when using @GeneratedValue";
 
     private EntityManager entityManager;
@@ -52,6 +55,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         });
         this.entityManager.close();
     }
+
     @Test
     @DisplayName("Test no table annotation present")
     void testValidateEntityNoTable() {
@@ -175,6 +179,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         validateNote(note2.getId(), person.getId());
         validateNote(note3.getId(), person.getId());
     }
+
     @Test
     @DisplayName("Test insert one person with multiple notes and multiple companies")
     public void testInsertPersonWithMultipleNotes() {
@@ -380,6 +385,131 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         assertNull(entityManager.find(NoteComplex.class, note.getId()));
 
         entityManager.getTransaction().commit();
+    }
+
+    @Test
+    @DisplayName("Test lazy loading. Get Entity list of related objects out of transaction")
+    public void testLazyLoadingRelatedObjectsOutOfTransaction() {
+
+        PersonWithoutGeneratedValue person = new PersonWithoutGeneratedValue();
+        person.setFirstName("Quentin");
+        person.setLastName("Tarantino");
+        person.setId(40L);
+        person.setBirthday(LocalDateTime.of(1963, Month.MARCH, 27, 10, 0, 0).toLocalDate());
+
+        NoteWithoutGeneratedValue firstNote = new NoteWithoutGeneratedValue();
+        firstNote.setId(51L);
+        firstNote.setBody("Pulp Fiction. 1994");
+        firstNote.setPerson(person);
+
+        NoteWithoutGeneratedValue secondNote = new NoteWithoutGeneratedValue();
+        secondNote.setId(52L);
+        secondNote.setBody("Once Upon a Time in Hollywood. 2019");
+        secondNote.setPerson(person);
+
+        person.addNote(firstNote);
+        person.addNote(secondNote);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        EntityManagerImpl otherEntityManager = new EntityManagerImpl(dataSource);
+        otherEntityManager.getTransaction().begin();
+        var selectedPerson = otherEntityManager.find(PersonWithoutGeneratedValue.class, person.getId());
+        otherEntityManager.getTransaction().commit();
+        otherEntityManager.close();
+
+        assertEquals(person.getFirstName(), selectedPerson.getFirstName());
+        assertEquals(person.getLastName(), selectedPerson.getLastName());
+        assertEquals(person.getBirthday(), selectedPerson.getBirthday());
+        assertThrows(LazyInitializationException.class, () -> selectedPerson.getNotes().size());
+
+        entityManager.getTransaction().begin();
+        var selectedPersonWithNotes = entityManager.find(PersonWithoutGeneratedValue.class, person.getId());
+        entityManager.getTransaction().commit();
+        assertDoesNotThrow(() -> selectedPersonWithNotes.getNotes().size());
+    }
+
+    @Test
+    @DisplayName("Test lazy loading. Get Entity and list of related objects in bound of transaction")
+    public void testLazyLoading() {
+
+        PersonWithoutGeneratedValue person = new PersonWithoutGeneratedValue();
+        person.setFirstName("Quentin");
+        person.setLastName("Tarantino");
+        person.setId(41L);
+        person.setBirthday(LocalDateTime.of(1963, Month.MARCH, 27, 10, 0, 0).toLocalDate());
+
+        NoteWithoutGeneratedValue firstNote = new NoteWithoutGeneratedValue();
+        firstNote.setId(53L);
+        firstNote.setBody("Pulp Fiction. 1994");
+        firstNote.setPerson(person);
+
+        NoteWithoutGeneratedValue secondNote = new NoteWithoutGeneratedValue();
+        secondNote.setId(54L);
+        secondNote.setBody("Once Upon a Time in Hollywood. 2019");
+        secondNote.setPerson(person);
+
+        person.addNote(firstNote);
+        person.addNote(secondNote);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        EntityManagerImpl otherEntityManager = new EntityManagerImpl(dataSource);
+        otherEntityManager.getTransaction().begin();
+        var selectedPerson = otherEntityManager.find(PersonWithoutGeneratedValue.class, person.getId());
+        assertDoesNotThrow(() -> selectedPerson.getNotes().size());
+        otherEntityManager.getTransaction().commit();
+        otherEntityManager.close();
+
+        assertEquals(person.getFirstName(), selectedPerson.getFirstName());
+        assertEquals(person.getLastName(), selectedPerson.getLastName());
+        assertEquals(person.getBirthday(), selectedPerson.getBirthday());
+        assertEquals(2, selectedPerson.getNotes().size());
+
+    }
+
+    @Test
+    @DisplayName("Test eager loading. Get list of related objects out of transaction")
+    public void testEagerLoading() {
+
+        var person = new PersonWithoutGeneratedValueWithEagerFetch();
+        person.setFirstName("Tom");
+        person.setLastName("Cruise");
+        person.setId(50L);
+        person.setBirthday(LocalDateTime.of(1962, Month.JULY, 3, 5, 0, 0).toLocalDate());
+
+        var firstNote = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
+        firstNote.setId(61L);
+        firstNote.setBody("Top Gun: Maverick. 1986");
+        firstNote.setPerson(person);
+
+        var secondNote = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
+        secondNote.setId(62L);
+        secondNote.setBody("Top Gun: Maverick. 2022");
+        secondNote.setPerson(person);
+
+        person.addNote(firstNote);
+        person.addNote(secondNote);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        EntityManagerImpl otherEntityManager = new EntityManagerImpl(dataSource);
+        otherEntityManager.getTransaction().begin();
+        var selectedPerson = otherEntityManager.find(PersonWithoutGeneratedValueWithEagerFetch.class, person.getId());
+        otherEntityManager.getTransaction().commit();
+        otherEntityManager.close();
+
+        assertEquals(person.getFirstName(), selectedPerson.getFirstName());
+        assertEquals(person.getLastName(), selectedPerson.getLastName());
+        assertEquals(person.getBirthday(), selectedPerson.getBirthday());
+        assertDoesNotThrow(() -> selectedPerson.getNotes().size());
+        assertEquals(2, selectedPerson.getNotes().size());
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.breskul.bibernate.persistence.testmodel;
+package com.breskul.bibernate.persistence.test_model;
 
 import com.breskul.bibernate.annotation.Column;
 import com.breskul.bibernate.annotation.Entity;
@@ -8,7 +8,6 @@ import com.breskul.bibernate.annotation.Strategy;
 import lombok.Data;
 
 import java.time.LocalDate;
-
 
 @Entity
 @Data
