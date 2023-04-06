@@ -955,4 +955,63 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         assertTrue(entityManager.contains(managedPerson));
         assertNotSame(person, managedPerson);
     }
+
+    @Test
+    @DisplayName("Test contains method.")
+    public void testContains() {
+        Person person = new Person();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        assertTrue(entityManager.contains(person));
+        assertTrue(entityManager.contains(note1));
+        assertTrue(entityManager.contains(note2));
+
+        entityManager.clear();
+
+        assertFalse(entityManager.contains(person));
+        assertFalse(entityManager.contains(note1));
+        assertFalse(entityManager.contains(note2));
+    }
+
+    @Test
+    @DisplayName("Test detach method.")
+    public void testDetach() {
+        Person person = new Person();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        entityManager.detach(person);
+
+        assertFalse(entityManager.contains(person));
+        assertTrue(entityManager.contains(note1));
+        assertTrue(entityManager.contains(note2));
+    }
+
 }
