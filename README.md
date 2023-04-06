@@ -48,6 +48,9 @@ The list of all features with code examples you can find in this guide.
         - [check status](#check-status)
         - [merge](#merge)
         - [close](#close)
+        - [detach](#detach)
+        - [contains](#contains)
+        - [clear](#clear)
     - [Entity Transaction](#entity-transaction)
         - [Create EntityTransaction](#create-entitytransaction)
         - [Begin new transaction](#begin-new-transaction)
@@ -295,6 +298,24 @@ There are many features implemented in the project. All features are tested.
 > Close session and clear all resources
 > ```java
 > entityManager.close();
+> ```
+
+##### Detach
+> Remove entity from the persistence context
+> ```java
+> entityManager.detach(person);
+> ```
+
+##### Contains
+> Check if the persistence context contains entity
+> ```java
+> bollean f = entityManager.contains(person);
+> ```
+
+##### Clear
+> Remove all entities from the persistence context
+> ```java
+> entityManager.clear();
 > ```
 
 ### Entity Transaction
