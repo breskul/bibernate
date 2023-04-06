@@ -4,12 +4,27 @@ import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.metamodel.Metamodel;
 
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class EntityManagerFactoryImpl implements EntityManagerFactory {
+    private final DataSource dataSource;
+    private final List<EntityManager> entityManagers = new ArrayList<>();
+
+    private boolean isOpen;
+
+    public EntityManagerFactoryImpl(DataSource dataSource) {
+        this.dataSource = dataSource;
+        this.isOpen = true;
+    }
+
     @Override
     public EntityManager createEntityManager() {
-        return null;
+        EntityManager entityManager = new EntityManagerImpl(dataSource);
+        entityManagers.add(entityManager);
+        return entityManager;
     }
 
     @Override
@@ -39,12 +54,14 @@ public class EntityManagerFactoryImpl implements EntityManagerFactory {
 
     @Override
     public boolean isOpen() {
-        return false;
+        return isOpen;
     }
 
     @Override
     public void close() {
-
+        entityManagers.forEach(EntityManager::close);
+        entityManagers.clear();
+        this.isOpen = false;
     }
 
     @Override
