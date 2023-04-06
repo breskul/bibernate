@@ -1,4 +1,6 @@
-package com.breskul.bibernate.enums;
+package com.breskul.bibernate.annotation.enums;
+
+import com.breskul.bibernate.annotation.OneToMany;
 
 /**
  * Defines strategies for fetching data from the database.

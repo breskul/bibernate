@@ -1,11 +1,16 @@
 package com.breskul.bibernate.persistence;
 
-import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.annotation.enums.CascadeType;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.collection.LazyList;
+import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import com.breskul.bibernate.exception.ReflectionException;
 import com.breskul.bibernate.exception.TransactionException;
+import com.breskul.bibernate.persistence.model.EntityKey;
+import com.breskul.bibernate.persistence.model.Snapshot;
 import com.breskul.bibernate.persistence.util.DaoUtils;
+import com.breskul.bibernate.persistence.model.EntityNode;
+import com.breskul.bibernate.persistence.util.QueryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,19 +25,13 @@ import java.util.*;
 import static com.breskul.bibernate.persistence.util.DaoUtils.*;
 
 public class JdbcDao {
-
     private static final Logger logger = LoggerFactory.getLogger(JdbcDao.class);
 
     private Connection connection;
-    private final Map<EntityKey<?>, Object> cache;
+    private final PersistenceContext context;
 
-    private static final String SELECT_FROM_TABLE_BY_COLUMN_STATEMENT = "SELECT %s.* FROM %s %s WHERE %s.%s = ?";
-    private static final String DELETE_STATEMENT = "DELETE FROM %s WHERE %s = ?";
-    private static final String INSERT_QUERY = "INSERT INTO %s (%s) VALUES (%s)";
-    private static final String SELECT_SEQ_QUERY = "SELECT nextval('%s_seq')";
-
-    public JdbcDao(Map<EntityKey<?>, Object> cache) {
-        this.cache = cache;
+    public JdbcDao(PersistenceContext context) {
+        this.context = context;
     }
 
     /**
@@ -41,29 +40,30 @@ public class JdbcDao {
      * @param parentEntity {@link Object} the JPA entity for which the list of column names should be returned.
      */
     public void persist(Object parentEntity) {
-        EntityToInsertNode parentEntityToInsertNode = buildTreeDependencyFromParentEntity(parentEntity);
-        var queue = new ArrayDeque<EntityToInsertNode>();
+        EntityNode parentEntityToInsertNode = buildTreeDependencyFromParentEntity(parentEntity);
+        var queue = new ArrayDeque<EntityNode>();
         queue.add(parentEntityToInsertNode);
         while (!queue.isEmpty()) {
             var node = queue.poll();
             var entity = node.entity();
             var tableName = DaoUtils.resolveTableName(entity);
-            var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
-            var sqlFieldValues = DaoUtils.getSqlFieldValues(entity);
+            var sqlFieldNames = DaoUtils.getSqlFieldNamesWithoutId(entity);
+            var sqlFieldValues = DaoUtils.getSqlFieldValuesWithoutId(entity);
 
             var identifierField = DaoUtils.getIdentifierField(entity.getClass());
             var strategy = getStrategy(entity);
             Object id;
             if (strategy.equals(Strategy.SEQUENCE)) {
-                var formattedSequenceQuery = String.format(SELECT_SEQ_QUERY, tableName);
-                id = getSequenceId(formattedSequenceQuery);
+                var sequenceQuery = QueryUtils.buildSequenceQuery(tableName);
+                id = getSequenceId(sequenceQuery);
                 sqlFieldNames = identifierField.getName() + "," + sqlFieldNames;
                 sqlFieldValues = id + "," + sqlFieldValues;
-                setIdentifierInEntity(entity, identifierField, id);
+                setValueToField(entity, identifierField, id);
                 insertEntity(tableName, sqlFieldNames, sqlFieldValues);
             } else if (strategy.equals(Strategy.IDENTITY)) {
                 id = insertEntity(tableName, sqlFieldNames, sqlFieldValues);
-                setIdentifierInEntity(entity, identifierField, id);
+                sqlFieldValues = id + "," + sqlFieldValues;
+                setValueToField(entity, identifierField, id);
             } else {
                 String idName = getIdentifierFieldName(entity.getClass());
                 id = getIdentifierValue(entity);
@@ -71,27 +71,25 @@ public class JdbcDao {
                 sqlFieldValues = id + "," + sqlFieldValues;
                 insertEntity(tableName, sqlFieldNames, sqlFieldValues);
             }
-            var entityKey = EntityKey.of(entity.getClass(), id);
-            cache.put(entityKey, entity);
+            context.addToSnapshot(entity, id, sqlFieldValues);
+            context.addToCache(entity, id);
             queue.addAll(node.childes());
-
         }
-
     }
 
     /**
      * <p>This method sets the identifier field of the given entity with the given identifier value.</p>
      *
      * @param entity          {@link Object} entity in which identifier value will be set
-     * @param identifierField {@link Field} identifier field
-     * @param id              {@link Object} value which would be inserted into entity
+     * @param field           {@link Field} value field
+     * @param value           {@link Object} value which would be inserted into entity
      */
-    private static void setIdentifierInEntity(Object entity, Field identifierField, Object id) {
-        identifierField.setAccessible(true);
+    private static void setValueToField(Object entity, Field field, Object value) {
+        field.setAccessible(true);
         try {
-            identifierField.set(entity, id);
+            field.set(entity, value);
         } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw new JdbcDaoException("Can not insert value to field", e);
         }
     }
 
@@ -99,12 +97,12 @@ public class JdbcDao {
      * <p>This method builds a tree of dependent entities starting from the given entity, which is used to determine the order in which the entities should be persisted.</p>
      *
      * @param entityToSave {@link Object} the JPA entity for which the list of column names should be returned.
-     * @return {@link EntityToInsertNode} the parent node with all childes dependencies entities
+     * @return {@link EntityNode} the parent node with all childes dependencies entities
      */
-    private EntityToInsertNode buildTreeDependencyFromParentEntity(Object entityToSave) {
-        EntityToInsertNode parentEntityToInsertNode = new EntityToInsertNode(entityToSave, new ArrayList<>());
-        var queue = new ArrayDeque<EntityToInsertNode>();
-        queue.add(parentEntityToInsertNode);
+    private EntityNode buildTreeDependencyFromParentEntity(Object entityToSave) {
+        EntityNode parentEntityNode = new EntityNode(entityToSave, new ArrayList<>());
+        var queue = new ArrayDeque<EntityNode>();
+        queue.add(parentEntityNode);
         while (!queue.isEmpty()) {
             var currentNode = queue.poll();
             var currentEntity = currentNode.entity();
@@ -114,14 +112,14 @@ public class JdbcDao {
                 if (DaoUtils.isCollectionField(collectionField)) {
                     var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
                     for (var childEntity : childEntities) {
-                        var newNode = new EntityToInsertNode(childEntity, new ArrayList<>());
+                        var newNode = new EntityNode(childEntity, new ArrayList<>());
                         childes.add(newNode);
                         queue.add(newNode);
                     }
                 }
             }
         }
-        return parentEntityToInsertNode;
+        return parentEntityNode;
     }
 
     /**
@@ -149,8 +147,9 @@ public class JdbcDao {
      * @return id {@link Object} - identifier for the inserted entity
      */
     private Object insertEntity(String tableName, String sqlFieldNames, String sqlFieldValues) {
-        var formattedInsertSql = String.format(INSERT_QUERY, tableName, sqlFieldNames, sqlFieldValues);
-        try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedInsertSql, Statement.RETURN_GENERATED_KEYS)) {
+        var insertQuery = QueryUtils.buildInsertQuery(tableName, sqlFieldNames, sqlFieldValues);
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
+            logger.info("SQL: {}", preparedStatement);
             preparedStatement.executeUpdate();
             preparedStatement.getGeneratedKeys().next();
             return preparedStatement.getGeneratedKeys().getObject(1);
@@ -196,15 +195,12 @@ public class JdbcDao {
      * @return a list {@link List} of entities that have the given value in the given field
      */
     public <T> List<T> findAllBy(Class<T> entityType, String tableName, Field field, Object columnValue, Set<Field> fieldsToSkip) {
-        final var alias = tableName.substring(0, 1).toLowerCase();
         var columnName = DaoUtils.getColumnName(field);
-        String formattedDeleteStatement =
-                String.format(SELECT_FROM_TABLE_BY_COLUMN_STATEMENT, alias, tableName, alias, alias, columnName);
+        String selectQuery = QueryUtils.buildSelectQuery(tableName, columnName);
         final var cause = String.format("Error occurred while executing 'SELECT BY %s' statement", columnName);
         var list = new ArrayList<T>();
-        try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(selectQuery)) {
             preparedStatement.setObject(1, columnValue);
-            logger.info("SQL: {}", preparedStatement);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 var entity = createEntityFromResultSet(entityType, resultSet, fieldsToSkip);
@@ -238,26 +234,53 @@ public class JdbcDao {
     }
 
     /**
-     * <p>Deletes an entity from the database using its identifier</p>
-     *
-     * @param tableName      the name of the table in which to delete the entity
-     * @param identifierName the name of the identifier column
-     * @param identifier     the identifier of the entity to delete
+     * <p>takes a parent entity and a cache of related entities as parameters and uses a
+     * stack-based algorithm to determine the order in which entities should be deleted to avoid violating foreign key constraints.</p>
+     * @param parentEntity - {@link Object} entity to be deleted
      */
-    public void deleteByIdentifier(String tableName, String identifierName, Object identifier) {
-        String formattedDeleteStatement = String.format(DELETE_STATEMENT, tableName, identifierName);
-        var cause = "error occurred while executing delete statement";
-        var solution = "check your sql query";
-        try (PreparedStatement preparedStatement = getConnection().prepareStatement(formattedDeleteStatement)) {
-            preparedStatement.setObject(1, identifier);
-            logger.info("SQL: {}", preparedStatement);
-            int rowDeleted = preparedStatement.executeUpdate();
-            if (rowDeleted == 0) {
-                throw new JdbcDaoException(cause);
+    public void remove(Object parentEntity) {
+        var stack = buildStackOfEntitiesToDelete(parentEntity);
+        var cause = "could not execute your delete statement";
+        while (!stack.isEmpty()){
+            var entity = stack.pop();
+            var tableName = DaoUtils.getClassTableName(entity.getClass());
+            var identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
+            var identifierValue = DaoUtils.getIdentifierValue(entity);
+            var deleteQuery = QueryUtils.buildDeleteQuery(tableName, identifierName);
+            try (PreparedStatement preparedStatement = getConnection().prepareStatement(deleteQuery)) {
+                preparedStatement.setObject(1, identifierValue);
+                logger.info("SQL: {}", preparedStatement);
+                if (preparedStatement.executeUpdate() != 1){
+                    throw new JdbcDaoException(cause);
+                }
+                context.removeFromCache(entity.getClass(), identifierValue);
+                context.removeSnapshot(entity.getClass(), identifierValue);
+            } catch (SQLException exception) {
+                throw new JdbcDaoException(cause, exception);
             }
-        } catch (SQLException e) {
-            throw new JdbcDaoException(cause, solution, e);
         }
+    }
+
+    /**
+     * <p>returns a stack of entities to be deleted in the order in which they should be deleted. Child entities are deleted first</p>
+     * @param parentEntity - {@link Object} root node of the tree
+     * @return {@link Stack} of entities
+     */
+    private Stack<Object> buildStackOfEntitiesToDelete(Object parentEntity){
+        var stack = new Stack<>();
+        var queue = new ArrayDeque<>();
+        queue.add(parentEntity);
+        stack.add(parentEntity);
+        while (!queue.isEmpty()){
+            var currentEntity = queue.poll();
+            List<Field> collecionFieldList = DaoUtils.getCascadeAllOrRemoveListFields(currentEntity.getClass());
+            for (Field collectionField: collecionFieldList){
+                var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
+                queue.addAll(childEntities);
+                stack.addAll(childEntities);
+            }
+        }
+        return stack;
     }
 
     /**
@@ -295,7 +318,7 @@ public class JdbcDao {
                     "Set the accessible flag 'true'", exception);
         } catch (InvocationTargetException | NoSuchMethodException exception) {
             String className = entityType.getSimpleName();
-            throw new ReflectionException(String.format("The is an issuer to create an instance of the class '%s'", className),
+            throw new InternalException(String.format("The is an issuer to create an instance of the class '%s'", className),
                     String.format("Check the existence of constructor in '%s' class", className), exception);
         }
         return entity;
@@ -325,7 +348,11 @@ public class JdbcDao {
         var relatedEntityTableName = DaoUtils.getClassTableName(relatedEntityType);
         var joinColumnName = DaoUtils.resolveFieldName(field);
         var joinColumnValue = resultSet.getObject(joinColumnName);
-        return findByIdentifier(relatedEntityType, relatedEntityTableName, joinColumnValue);
+        Object relatedEntity = findByIdentifier(relatedEntityType, relatedEntityTableName, joinColumnValue);
+        String snapshotValues = DaoUtils.getSqlFieldValues(relatedEntity);
+        context.addToSnapshot(relatedEntity, joinColumnValue, snapshotValues);
+        context.addToCache(relatedEntity, joinColumnValue);
+        return relatedEntity;
     }
 
     private <T> List<T> getCollectionEntityFieldValue(Class<T> entityType, T entity, Field field) {
@@ -336,12 +363,75 @@ public class JdbcDao {
         var entityId = DaoUtils.getIdentifierValue(entity);
         var relatedEntityFieldsToSkip = Collections.singleton(entityFieldInRelatedEntity);
         if (DaoUtils.isEntityCollectionFieldIsLazy(field)) {
-            resultList = new LazyList<>(() -> findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId, relatedEntityFieldsToSkip));
+            resultList = new LazyList<>(() -> {
+                List<?> entities = findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId, relatedEntityFieldsToSkip);
+                entities.forEach(this::addEntityToContext);
+               return entities;
+            });
         } else {
             resultList = (List<T>) findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId, relatedEntityFieldsToSkip);
+            resultList.forEach(this::addEntityToContext);
         }
         return resultList;
     }
 
+    private void addEntityToContext(Object entity) {
+        var valueId = DaoUtils.getIdentifierValue(entity);
+        String snapshotValues = DaoUtils.getSqlFieldValues(entity);
+        context.addToSnapshot(entity, valueId, snapshotValues);
+        context.addToCache(entity, valueId);
+    }
 
+    /**
+     * This method provide dirty checking.
+     * Compare data from snapshot and cache and update them if they have some changes.
+     * After process all persist changes snapshot will update with new changes.
+     */
+    public void compareSnapshots() {
+        List<Object> objects = context.getCache().values().stream().toList();
+        objects.forEach(this::updateCollectionEntities);
+        Map<EntityKey<?>, Snapshot> updateSnapshots = new HashMap<>();
+        context.getSnapshots().entrySet().stream()
+                .filter(entry -> !entry.getValue().getStatus().equals(Snapshot.Status.REMOVED))
+                .forEach(entry -> processUpdate(entry, updateSnapshots));
+        context.getSnapshots().putAll(updateSnapshots);
+    }
+
+    private void processUpdate(Map.Entry<EntityKey<?>, Snapshot> entry, Map<EntityKey<?>, Snapshot> updateSnapshots) {
+        Snapshot snapshot = entry.getValue();
+        EntityKey<?> entityKey = entry.getKey();
+        Object entity = context.getCache().get(entry.getKey());
+        String values = DaoUtils.getSqlFieldValues(entity);
+        if (!values.equals(snapshot.getValue())) {
+            update(entity);
+            updateSnapshots.put(entityKey, new Snapshot(values, Snapshot.Status.ACTUAL));
+        }
+    }
+
+    private void updateCollectionEntities(Object entity) {
+        var entityType = entity.getClass();
+        for (var field : entityType.getDeclaredFields()) {
+            if (isCollectionField(field) && getCascadeType(field).equals(CascadeType.PERSIST)) {
+                var childEntities = (Collection<?>) DaoUtils.getFieldValue(entity, field);
+                if (Objects.nonNull(childEntities) && !childEntities.isEmpty()) {
+                    for (var childEntity : childEntities) {
+                        var childIdentifier = DaoUtils.getIdentifierValue(childEntity);
+                        EntityKey<?> entityKey = EntityKey.of(childEntity.getClass(), childIdentifier);
+                        if (!context.getSnapshots().containsKey(entityKey)) {
+                            persist(childEntity);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void update(Object entity) {
+        String query = QueryUtils.buildUpdateQuery(entity);
+        try (PreparedStatement preparedStatement = getConnection().prepareStatement(query)) {
+            preparedStatement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new JdbcDaoException("Can not update entity: " + entity.getClass().getSimpleName(), exception);
+        }
+    }
 }

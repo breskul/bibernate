@@ -4,7 +4,7 @@ import com.breskul.bibernate.annotation.Column;
 import com.breskul.bibernate.annotation.Entity;
 import com.breskul.bibernate.annotation.GeneratedValue;
 import com.breskul.bibernate.annotation.Id;
-import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import lombok.Data;
 
 import java.time.LocalDate;

@@ -1,4 +1,4 @@
-package com.breskul.bibernate.persistence.test_model;
+package com.breskul.bibernate.persistence.test_model.cascadepersist;
 
 import com.breskul.bibernate.annotation.*;
 import lombok.Data;
@@ -10,7 +10,7 @@ import static com.breskul.bibernate.annotation.enums.Strategy.SEQUENCE;
 @Data
 @Table(name = "companies")
 @EqualsAndHashCode(exclude = "noteComplex")
-public class Company {
+public class CompanyCascadePersist {
     @Id
     @GeneratedValue(strategy = SEQUENCE)
     private Long id;
@@ -19,6 +19,7 @@ public class Company {
 
     @ManyToOne
     @JoinColumn(name = "note_id")
-    private NoteComplex noteComplex;
+    private NoteComplexCascadePersist noteComplex;
+
 
 }

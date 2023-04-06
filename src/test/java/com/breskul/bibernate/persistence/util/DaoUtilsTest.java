@@ -1,11 +1,11 @@
 package com.breskul.bibernate.persistence.util;
 
-import com.breskul.bibernate.annotation.GeneratedValue;
-import com.breskul.bibernate.annotation.Id;
-import com.breskul.bibernate.annotation.Strategy;
+import com.breskul.bibernate.annotation.*;
+import com.breskul.bibernate.annotation.enums.CascadeType;
+import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.collection.LazyList;
-import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
+import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.persistence.test_model.Person;
 import com.breskul.bibernate.persistence.util.test_model.*;
 import jakarta.persistence.Column;
@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,13 +27,13 @@ class DaoUtilsTest {
     @Test
     @DisplayName("Test getIdentifierField method")
     void testGetIdentifierField() {
-        assertThrows(DaoUtilsException.class, () -> DaoUtils.getIdentifierField(Note.class));
+        assertThrows(InternalException.class, () -> DaoUtils.getIdentifierField(Note.class));
     }
 
     @Test
     @DisplayName("Test getIdentifierFieldName method")
     void testGetIdentifierFieldName() {
-        assertThrows(DaoUtilsException.class, () -> DaoUtils.getIdentifierFieldName(Note.class));
+        assertThrows(InternalException.class, () -> DaoUtils.getIdentifierFieldName(Note.class));
     }
 
     @Test
@@ -41,7 +42,7 @@ class DaoUtilsTest {
         Note note = new Note();
         note.setId(1L);
         note.setBody("my note");
-        assertThrows(DaoUtilsException.class, () -> DaoUtils.getIdentifierValue(note));
+        assertThrows(InternalException.class, () -> DaoUtils.getIdentifierValue(note));
     }
 
     @Test
@@ -126,7 +127,7 @@ class DaoUtilsTest {
     @DisplayName("Test GetSqlFieldNames with SEQUENCE")
     void testGetSqlFieldNamesSequence() {
         var entity = new EntitySequence();
-        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        var sqlFieldNames = DaoUtils.getSqlFieldNamesWithoutId(entity);
         assertEquals("name,age", sqlFieldNames);
     }
 
@@ -134,7 +135,7 @@ class DaoUtilsTest {
     @DisplayName("Test GetSqlFieldNames with IDENTITY")
     void testGetSqlFieldNamesIdentity() {
         var entity = new EntityIdentity();
-        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        var sqlFieldNames = DaoUtils.getSqlFieldNamesWithoutId(entity);
         assertEquals("name,age", sqlFieldNames);
     }
 
@@ -143,7 +144,7 @@ class DaoUtilsTest {
     @DisplayName("Test get sql field names with AUTO")
     void testGetSqlFieldNamesAuto() {
         var entity = new EntityAuto();
-        var sqlFieldNames = DaoUtils.getSqlFieldNames(entity);
+        var sqlFieldNames = DaoUtils.getSqlFieldNamesWithoutId(entity);
         assertEquals("name,age", sqlFieldNames);
     }
 
@@ -220,6 +221,105 @@ class DaoUtilsTest {
     }
 
     @Test
+    @DisplayName("Test get field value")
+    public void testGetCollectionFields() {
+        List<Field> fields = DaoUtils.getCollectionFields(Entity.class);
+        assertEquals(2, fields.size());
+        assertTrue(fields.stream().allMatch(field -> field.isAnnotationPresent(OneToMany.class)));
+    }
+
+    static class ParentEntity {
+        @Id
+        Long id;
+
+        @OneToMany(cascade = CascadeType.ALL)
+        List<ChildEntity> allChildren;
+
+        @OneToMany(cascade = CascadeType.REMOVE)
+        List<ChildEntity> removeChildren;
+
+        @OneToMany(cascade = CascadeType.MERGE)
+        List<ChildEntity> mergeChildren;
+
+        @OneToMany
+        List<ChildEntity> noCascadeChildren;
+    }
+
+    static class ChildEntity {
+        @Id
+        Long id;
+
+        String name;
+    }
+    @Test
+    @DisplayName("test getCascadeAllOrRemoveListFields method")
+    void testGetCascadeAllOrRemoveListFields() {
+        List<Field> fields = DaoUtils.getCascadeAllOrRemoveListFields(ParentEntity.class);
+        assertEquals(3, fields.size());
+        assertTrue(fields.stream().anyMatch(f -> f.getName().equals("allChildren")));
+        assertTrue(fields.stream().anyMatch(f -> f.getName().equals("removeChildren")));
+        assertFalse(fields.stream().anyMatch(f -> f.getName().equals("mergeChildren")));
+        assertTrue(fields.stream().anyMatch(f -> f.getName().equals("noCascadeChildren")));
+    }
+
+    @Test
+    @DisplayName("test getCascadeType method")
+    public void testGetCascadeType() {
+        Field field1 = getFieldFromEntity("relatedEntities");
+        CascadeType cascadeType = DaoUtils.getCascadeType(field1);
+        assertEquals(CascadeType.ALL, cascadeType);
+
+        Field field2 = getFieldFromEntity("otherRelatedEntities");
+        cascadeType = DaoUtils.getCascadeType(field2);
+        assertEquals(CascadeType.REMOVE, cascadeType);
+
+        // Test that exception is thrown if OneToMany annotation does not have CascadeType
+        Field field3 = getFieldFromEntity("unrelatedEntities");
+        assertThrows(JdbcDaoException.class, () -> DaoUtils.getCascadeType(field3));
+    }
+
+    @Test
+    @DisplayName("test isFieldAllOrRemoveCascade method")
+    public void testIsFieldAllOrRemoveCascade() {
+        Field field1 = getFieldFromEntity("relatedEntities");
+        boolean isAllOrRemoveCascade = DaoUtils.isFieldAllOrRemoveCascade(field1);
+        assertTrue(isAllOrRemoveCascade);
+
+        Field field2 = getFieldFromEntity("otherRelatedEntities");
+        isAllOrRemoveCascade = DaoUtils.isFieldAllOrRemoveCascade(field2);
+        assertTrue(isAllOrRemoveCascade);
+
+        Field field3 = getFieldFromEntity("unrelatedEntities");
+        assertThrows(JdbcDaoException.class, () -> DaoUtils.isFieldAllOrRemoveCascade(field3));
+    }
+
+    @Test
+    @DisplayName("test testGetSqlFieldValuesWithoutId method")
+    public void testGetSqlFieldValuesWithoutId() {
+        TestEntity testEntity = new TestEntity();
+        testEntity.setId(1L);
+        testEntity.setName("John");
+        testEntity.setAge(30);
+        testEntity.setEmail("john@example.com");
+
+        String result = DaoUtils.getSqlFieldValuesWithoutId(testEntity);
+        assertEquals("'John',30,'john@example.com'", result, "getSqlFieldValuesWithoutId test failed!");
+    }
+
+    @Test
+    @DisplayName("test testGetSqlFieldValues method")
+    public void testGetSqlFieldValue() {
+        TestEntity testEntity = new TestEntity();
+        testEntity.setId(1L);
+        testEntity.setName("John");
+        testEntity.setAge(30);
+        testEntity.setEmail("john@example.com");
+
+        String result = DaoUtils.getSqlFieldValues(testEntity);
+        assertEquals("1,'John',30,'john@example.com'", result, "getSqlFieldValuesWithoutId test failed!");
+    }
+
+    @Test
     @DisplayName("isLoadedList returns ture")
     void testIsLoadedListTrue() throws Exception {
         LazyList<String> lazyList = new LazyList<>(ArrayList::new);
@@ -250,4 +350,30 @@ class DaoUtilsTest {
 
         Assertions.assertNotNull(person);
     }
+
+    // Helper method to retrieve a field from the Entity class
+    private Field getFieldFromEntity(String fieldName) {
+        try {
+            return Entity.class.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("Field not found: " + fieldName);
+        }
+    }
+
+    // Sample entity class for testing
+    private static class Entity {
+        @OneToMany(cascade = CascadeType.ALL)
+        private List<RelatedEntity> relatedEntities;
+
+        @OneToMany(cascade = CascadeType.REMOVE)
+        private Set<OtherRelatedEntity> otherRelatedEntities;
+
+        private String unrelatedEntities;
+    }
+
+    // Sample related entity classes for testing
+    private static class RelatedEntity {}
+
+    private static class OtherRelatedEntity {}
+
 }

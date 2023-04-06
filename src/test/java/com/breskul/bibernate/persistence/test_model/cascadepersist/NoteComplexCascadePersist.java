@@ -1,6 +1,7 @@
-package com.breskul.bibernate.persistence.test_model;
+package com.breskul.bibernate.persistence.test_model.cascadepersist;
 
 import com.breskul.bibernate.annotation.*;
+import com.breskul.bibernate.annotation.enums.CascadeType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -16,7 +17,7 @@ import static com.breskul.bibernate.annotation.enums.Strategy.SEQUENCE;
 @Table(name = "notes")
 @EqualsAndHashCode(exclude = {"companies"})
 @ToString(exclude = {"companies"})
-public class NoteComplex {
+public class NoteComplexCascadePersist {
 
     @Id
     @GeneratedValue(strategy = SEQUENCE)
@@ -28,16 +29,15 @@ public class NoteComplex {
 
     @ManyToOne
     @JoinColumn(name = "person_id")
-    private Person person;
+    private PersonCascadePersist person;
 
-    @OneToMany
-    private List<Company> companies = new ArrayList<>();
+    @OneToMany(cascade = CascadeType.PERSIST)
+    private List<CompanyCascadePersist> companies = new ArrayList<>();
 
-    public void addCompany(Company company) {
+    public void addCompany(CompanyCascadePersist company) {
         company.setNoteComplex(this);
         companies.add(company);
 
 
     }
-
 }
