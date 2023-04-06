@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import javax.sql.DataSource;
 
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,7 +11,7 @@ import org.junit.jupiter.api.Test;
 public class EntityManagerFactoryImplTest {
     private DataSource dataSource;
 
-    private EntityManagerFactoryImpl entityManagerFactory;
+    private EntityManagerFactory entityManagerFactory;
 
     @BeforeEach
     public void setUp() throws Exception {

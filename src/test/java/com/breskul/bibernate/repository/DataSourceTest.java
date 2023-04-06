@@ -1,8 +1,8 @@
 package com.breskul.bibernate.repository;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
+import com.breskul.bibernate.persistence.EntityManager;
 import com.breskul.bibernate.persistence.EntityManagerImpl;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.*;
 
 import java.sql.Connection;

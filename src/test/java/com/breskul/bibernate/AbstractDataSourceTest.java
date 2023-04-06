@@ -1,10 +1,10 @@
 package com.breskul.bibernate;
 
 import com.breskul.bibernate.configuration.PersistenceProperties;
+import com.breskul.bibernate.persistence.EntityManager;
 import com.breskul.bibernate.persistence.EntityManagerImpl;
+import com.breskul.bibernate.persistence.EntityTransaction;
 import com.breskul.bibernate.repository.DataSourceFactory;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 

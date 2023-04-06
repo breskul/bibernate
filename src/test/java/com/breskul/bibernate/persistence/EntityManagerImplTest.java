@@ -14,8 +14,6 @@ import com.breskul.bibernate.persistence.test_model.cascadepersist.NoteComplexCa
 import com.breskul.bibernate.persistence.test_model.cascadepersist.PersonCascadePersist;
 import com.breskul.bibernate.persistence.test_model.cascadepersist.PersonProfileCascadePersist;
 import com.breskul.bibernate.persistence.util.DaoUtils;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.*;
 
 import java.sql.Connection;

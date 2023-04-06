@@ -8,7 +8,6 @@ import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.persistence.test_model.Person;
 import com.breskul.bibernate.persistence.util.test_model.*;
-import jakarta.persistence.Column;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
