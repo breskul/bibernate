@@ -7,9 +7,9 @@ import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.model.EntityKey;
+import com.breskul.bibernate.persistence.model.EntityNode;
 import com.breskul.bibernate.persistence.model.Snapshot;
 import com.breskul.bibernate.persistence.util.DaoUtils;
-import com.breskul.bibernate.persistence.model.EntityNode;
 import com.breskul.bibernate.persistence.util.QueryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,9 +80,9 @@ public class JdbcDao {
     /**
      * <p>This method sets the identifier field of the given entity with the given identifier value.</p>
      *
-     * @param entity          {@link Object} entity in which identifier value will be set
-     * @param field           {@link Field} value field
-     * @param value           {@link Object} value which would be inserted into entity
+     * @param entity {@link Object} entity in which identifier value will be set
+     * @param field  {@link Field} value field
+     * @param value  {@link Object} value which would be inserted into entity
      */
     private static void setValueToField(Object entity, Field field, Object value) {
         field.setAccessible(true);
@@ -109,7 +109,7 @@ public class JdbcDao {
             var childes = currentNode.childes();
             List<Field> collectionFieldList = DaoUtils.getCollectionFields(currentEntity.getClass());
             for (Field collectionField : collectionFieldList) {
-                if (DaoUtils.isCollectionField(collectionField)) {
+                if (DaoUtils.isFieldAllOrPersistCascade(collectionField)) {
                     var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
                     for (var childEntity : childEntities) {
                         var newNode = new EntityNode(childEntity, new ArrayList<>());
@@ -223,7 +223,7 @@ public class JdbcDao {
      * @return the entity if found, null otherwise
      */
     public <T> T findOneBy(Class<T> entityType, String tableName, Field field, Object columnValue) {
-        List<T> resultList = findAllBy(entityType, tableName, field, columnValue, Collections.EMPTY_SET);
+        List<T> resultList = findAllBy(entityType, tableName, field, columnValue, Collections.emptySet());
         if (resultList.size() > 1) {
             throw new JdbcDaoException("The result must contain exactly one row");
         } else if (resultList.size() == 1) {
@@ -236,12 +236,13 @@ public class JdbcDao {
     /**
      * <p>takes a parent entity and a cache of related entities as parameters and uses a
      * stack-based algorithm to determine the order in which entities should be deleted to avoid violating foreign key constraints.</p>
+     *
      * @param parentEntity - {@link Object} entity to be deleted
      */
     public void remove(Object parentEntity) {
         var stack = buildStackOfEntitiesToDelete(parentEntity);
         var cause = "could not execute your delete statement";
-        while (!stack.isEmpty()){
+        while (!stack.isEmpty()) {
             var entity = stack.pop();
             var tableName = DaoUtils.getClassTableName(entity.getClass());
             var identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
@@ -250,7 +251,7 @@ public class JdbcDao {
             try (PreparedStatement preparedStatement = getConnection().prepareStatement(deleteQuery)) {
                 preparedStatement.setObject(1, identifierValue);
                 logger.info("SQL: {}", preparedStatement);
-                if (preparedStatement.executeUpdate() != 1){
+                if (preparedStatement.executeUpdate() != 1) {
                     throw new JdbcDaoException(cause);
                 }
                 context.removeFromCache(entity.getClass(), identifierValue);
@@ -263,18 +264,19 @@ public class JdbcDao {
 
     /**
      * <p>returns a stack of entities to be deleted in the order in which they should be deleted. Child entities are deleted first</p>
+     *
      * @param parentEntity - {@link Object} root node of the tree
      * @return {@link Stack} of entities
      */
-    private Stack<Object> buildStackOfEntitiesToDelete(Object parentEntity){
+    private Stack<Object> buildStackOfEntitiesToDelete(Object parentEntity) {
         var stack = new Stack<>();
         var queue = new ArrayDeque<>();
         queue.add(parentEntity);
         stack.add(parentEntity);
-        while (!queue.isEmpty()){
+        while (!queue.isEmpty()) {
             var currentEntity = queue.poll();
             List<Field> collecionFieldList = DaoUtils.getCascadeAllOrRemoveListFields(currentEntity.getClass());
-            for (Field collectionField: collecionFieldList){
+            for (Field collectionField : collecionFieldList) {
                 var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
                 queue.addAll(childEntities);
                 stack.addAll(childEntities);
@@ -366,7 +368,7 @@ public class JdbcDao {
             resultList = new LazyList<>(() -> {
                 List<?> entities = findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId, relatedEntityFieldsToSkip);
                 entities.forEach(this::addEntityToContext);
-               return entities;
+                return entities;
             });
         } else {
             resultList = (List<T>) findAllBy(relatedEntityType, relatedEntityTableName, entityFieldInRelatedEntity, entityId, relatedEntityFieldsToSkip);

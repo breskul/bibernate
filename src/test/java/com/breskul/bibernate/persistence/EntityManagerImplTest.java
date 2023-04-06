@@ -7,6 +7,8 @@ import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.LazyInitializationException;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.test_model.*;
+import com.breskul.bibernate.persistence.test_model.cascadenone.NoteComplexCascadeNone;
+import com.breskul.bibernate.persistence.test_model.cascadenone.PersonCascadeNone;
 import com.breskul.bibernate.persistence.test_model.cascadepersist.CompanyCascadePersist;
 import com.breskul.bibernate.persistence.test_model.cascadepersist.NoteComplexCascadePersist;
 import com.breskul.bibernate.persistence.test_model.cascadepersist.PersonCascadePersist;
@@ -257,6 +259,46 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
             assertTrue(resultSet.next());
             assertEquals(id, resultSet.getLong(1));
             assertEquals(parentId, resultSet.getLong(3));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("Test insert one person with multiple notes CascadeType.NONE")
+    public void testInsertPersonCascadeNone() {
+        PersonCascadeNone person = new PersonCascadeNone();
+        person.setFirstName(FIRST_NAME);
+        person.setLastName(LAST_NAME);
+        person.setBirthday(BIRTHDAY);
+
+        NoteComplexCascadeNone note1 = new NoteComplexCascadeNone();
+        note1.setBody(NOTE_BODY);
+
+        NoteComplexCascadeNone note2 = new NoteComplexCascadeNone();
+        note2.setBody(NOTE_BODY);
+
+        person.addNote(note1);
+        person.addNote(note2);
+
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+
+        entityTransaction.begin();
+        entityManager.persist(person);
+        entityTransaction.commit();
+
+        validatePerson(person.getId());
+        validateNotSavedNote(note1.getId());
+        validateNotSavedNote(note2.getId());
+
+    }
+
+    private void validateNotSavedNote(Long id) {
+        try (Connection connection = dataSource.getConnection()) {
+            PreparedStatement preparedStatement = connection.prepareStatement(String.format("SELECT * FROM notes where id = %d", id));
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            assertFalse(resultSet.next());
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }

@@ -57,8 +57,8 @@ public class EntityManagerImpl implements EntityManager {
     }
 
     /**
-     * <p> Persists the given entity to the database.</p>
-     * <p>This method first validates the session, then checks if the entity is a valid entity using the {@link com.breskul.bibernate.validate.EntityValidation#validatePersistEntity} method, and finally calls the {@link JdbcDao#persist} to execute the SQL query</p>
+     * Persists the given entity to the database.
+     * This method first validates the session, then checks entity existence in cash, and finally calls the {@link JdbcDao#persist} to execute the SQL query
      * @param entity {@link Object} entity to be validated
      */
     public void persist(Object entity) {
@@ -66,7 +66,6 @@ public class EntityManagerImpl implements EntityManager {
         validatePersistEntity(entity, context.getCache());
         this.jdbcDao.persist(entity);
     }
-
 
     @Override
     public <T> T merge(T entity) {

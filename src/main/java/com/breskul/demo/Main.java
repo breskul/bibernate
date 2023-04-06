@@ -1,6 +1,7 @@
 package com.breskul.demo;
 
 import com.breskul.bibernate.configuration.PersistenceProperties;
+import com.breskul.bibernate.persistence.EntityManagerFactoryImpl;
 import com.breskul.bibernate.repository.DataSourceFactory;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
@@ -13,7 +14,7 @@ public class Main {
         PersistenceProperties.initialize();
         DataSource dataSource = DataSourceFactory.getInstance().getDataSource();
 
-        EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("demo");
+        EntityManagerFactory entityManagerFactory = new EntityManagerFactoryImpl(dataSource);
         EntityManager entityManager = entityManagerFactory.createEntityManager();
         entityManagerFactory.close();
     }
