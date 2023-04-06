@@ -19,6 +19,9 @@ The list of all features with code examples you can find in this guide.
 
 - [Installation](#installation)
     - [Apache Maven](#apache-maven)
+      - [build](#maven-build)
+      - [tests running](#maven-tests-running)
+      - [get javadoc](#to-get-javadoc)
     - [Settings](#settings)
       - [Database settings](#database-settings)
     - [Quick start](#quick-start)
@@ -70,6 +73,33 @@ If you’re using Maven to build your project add the following to your pom.xml 
     <version>1.0-SNAPSHOT</version>
 </dependency>
 ```
+
+##### Maven build
+To build project using maven tool, please do the follow commands:
+```$xslt
+mvn clean install
+```
+
+##### Maven tests running
+To run tests using maven tool, please do the follow commands:
+
+```$xslt
+mvn clean test
+```
+
+##### To get javadoc
+To get javadoc, please do the follow commands:
+
+```$xslt
+mvn -X clean javadoc:aggregate-jar
+```
+
+You can find generated java doc by path:
+
+```$xslt
+target/apidocs/index.html
+```
+
 
 ### Settings
 ##### Database settings

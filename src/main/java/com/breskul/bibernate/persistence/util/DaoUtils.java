@@ -6,20 +6,25 @@ import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import jakarta.persistence.FetchType;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * <h3>{@link DaoUtils} provides reflection utility methods to work with Java Persistence API (JPA) entities. </h3>
+ * {@link DaoUtils} provides reflection utility methods to work with Java Persistence API (JPA) entities.
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DaoUtils {
-    private DaoUtils() {}
 
     /**
      * <p>This method returns a comma-separated list of the names of all the columns of the database table
@@ -176,8 +181,8 @@ public class DaoUtils {
         return field.isAnnotationPresent(ManyToOne.class);
     }
 
-    private static boolean isOneToOneEntityField(Field field){
-        if (Objects.isNull(field)){
+    private static boolean isOneToOneEntityField(Field field) {
+        if (Objects.isNull(field)) {
             return false;
         }
         return field.isAnnotationPresent(OneToOne.class);
@@ -189,7 +194,6 @@ public class DaoUtils {
      * @param entity {@link Object} the entity object to get the identifier value from
      * @param <T>    the type of the entity object
      * @return the value of the identifier field in the entity object
-     * @throws IllegalAccessException if the identifier value cannot be retrieved
      */
     public static <T> Object getIdentifierValue(T entity) {
         Field identifierField = getIdentifierField(entity.getClass());
@@ -221,6 +225,7 @@ public class DaoUtils {
 
     /**
      * <p>returns a List of Field objects that have the {@link CascadeType#ALL} or {@link CascadeType#REMOVE} cascade type specified on their @OneToMany</p>
+     *
      * @param entityClass - {@link Class}
      * @return {@link List} of {@link Field} list of field that have cascade described above
      */
@@ -249,10 +254,11 @@ public class DaoUtils {
                 .cascade();
     }
 
-    static boolean isFieldAllOrRemoveCascade(Field field){
+    static boolean isFieldAllOrRemoveCascade(Field field) {
         var cascadeType = getCascadeType(field);
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
     }
+
     /**
      * <p>Gets the name of the identifier field of an entity class.</p>
      *
