@@ -139,7 +139,7 @@ public class DaoUtils {
         if (value instanceof Number) {
             return value.toString();
         }
-        if (isParentEntityField(field)) {
+        if (isParentEntityField(field) || isOneToOneEntityField(field)) {
             return getIdentifierValue(value).toString();
         }
         return value.toString();
@@ -176,13 +176,20 @@ public class DaoUtils {
         return field.isAnnotationPresent(ManyToOne.class);
     }
 
+    private static boolean isOneToOneEntityField(Field field){
+        if (Objects.isNull(field)){
+            return false;
+        }
+        return field.isAnnotationPresent(OneToOne.class);
+    }
+
     /**
      * <p>Gets the value of the identifier field of an entity object.</p>
      *
      * @param entity {@link Object} the entity object to get the identifier value from
      * @param <T>    the type of the entity object
      * @return the value of the identifier field in the entity object
-     * @throws DaoUtilsException if the identifier value cannot be retrieved
+     * @throws IllegalAccessException if the identifier value cannot be retrieved
      */
     public static <T> Object getIdentifierValue(T entity) {
         Field identifierField = getIdentifierField(entity.getClass());
@@ -201,7 +208,7 @@ public class DaoUtils {
      *
      * @param entityClass {@link Class} the entity class to get the identifier field from
      * @return the identifier field {@link Field} of the entity class
-     * @throws DaoUtilsException if the entity class is not marked with @Id annotation
+     * @throws InternalException if the entity class is not marked with @Id annotation
      */
     public static Field getIdentifierField(Class<?> entityClass) {
         var cause = "entity is not marked with Id annotation";

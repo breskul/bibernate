@@ -10,6 +10,7 @@ import com.breskul.bibernate.persistence.test_model.*;
 import com.breskul.bibernate.persistence.test_model.cascadepersist.CompanyCascadePersist;
 import com.breskul.bibernate.persistence.test_model.cascadepersist.NoteComplexCascadePersist;
 import com.breskul.bibernate.persistence.test_model.cascadepersist.PersonCascadePersist;
+import com.breskul.bibernate.persistence.test_model.cascadepersist.PersonProfileCascadePersist;
 import com.breskul.bibernate.persistence.util.DaoUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
@@ -47,6 +48,9 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     void destroy() {
         doInConnection(connection -> {
             try {
+                PreparedStatement profiles = connection.prepareStatement(CLEAN_PROFILES_TABLE);
+                profiles.execute();
+
                 PreparedStatement companies = connection.prepareStatement(CLEAN_COMPANY_TABLE);
                 companies.execute();
                 PreparedStatement notes = connection.prepareStatement(CLEAN_NOTE_TABLE);
@@ -389,7 +393,64 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         checkEntityDoesNotExist(company4);
 
     }
-    private void checkEntityDoesNotExist( Object entity) {
+    @Test
+    @DisplayName("Test remove method on complex entity and one to one mapping")
+    public void testRemoveMethodOneToOne(){
+        PersonCascadePersist person = new PersonCascadePersist();
+        person.setFirstName(FIRST_NAME);
+        person.setLastName(LAST_NAME);
+        person.setBirthday(BIRTHDAY);
+
+        PersonProfileCascadePersist personProfile = new PersonProfileCascadePersist();
+
+        personProfile.setProfile("my profile");
+        personProfile.setPersonCascadePersist(person);
+
+        NoteComplexCascadePersist note1 = new NoteComplexCascadePersist();
+        note1.setBody(NOTE_BODY);
+
+        NoteComplexCascadePersist note2 = new NoteComplexCascadePersist();
+        note2.setBody(NOTE_BODY);
+
+        person.addNote(note1);
+        person.addNote(note2);
+
+        CompanyCascadePersist company1 = new CompanyCascadePersist();
+        company1.setName("company1");
+
+        CompanyCascadePersist company2 = new CompanyCascadePersist();
+        company2.setName("company2");
+
+        CompanyCascadePersist company3 = new CompanyCascadePersist();
+        company3.setName("company3");
+
+        CompanyCascadePersist company4 = new CompanyCascadePersist();
+        company4.setName("company4");
+
+        note1.addCompany(company1);
+        note1.addCompany(company2);
+
+        note2.addCompany(company3);
+        note2.addCompany(company4);
+
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+
+        entityTransaction.begin();
+        entityManager.persist(person);
+        entityManager.persist(personProfile);
+        entityTransaction.commit();
+
+        entityTransaction.begin();
+        assertThrows(JdbcDaoException.class, () -> entityManager.remove(person));
+        entityTransaction.commit();
+
+        entityTransaction.begin();
+        entityManager.remove(personProfile);
+        entityTransaction.commit();
+
+        checkEntityDoesNotExist(personProfile);
+    }
+    private void checkEntityDoesNotExist(Object entity) {
         var table = DaoUtils.getClassTableName(entity.getClass());
         var identifierName = DaoUtils.getIdentifierFieldName(entity.getClass());
         var identifierValue = DaoUtils.getIdentifierValue(entity);
