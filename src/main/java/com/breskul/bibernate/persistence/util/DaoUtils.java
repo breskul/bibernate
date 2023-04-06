@@ -2,11 +2,11 @@ package com.breskul.bibernate.persistence.util;
 
 import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.annotation.enums.CascadeType;
+import com.breskul.bibernate.annotation.enums.FetchType;
 import com.breskul.bibernate.annotation.enums.Strategy;
 import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import jakarta.persistence.FetchType;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 

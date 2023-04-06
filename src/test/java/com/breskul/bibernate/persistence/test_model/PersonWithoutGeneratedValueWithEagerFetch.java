@@ -1,7 +1,8 @@
 package com.breskul.bibernate.persistence.test_model;
 
 import com.breskul.bibernate.annotation.*;
-import jakarta.persistence.FetchType;
+
+import com.breskul.bibernate.annotation.enums.FetchType;
 import lombok.Data;
 import lombok.ToString;
 

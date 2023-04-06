@@ -1,7 +1,7 @@
 package com.breskul.bibernate.annotation;
 
 import com.breskul.bibernate.annotation.enums.CascadeType;
-import jakarta.persistence.FetchType;
+import com.breskul.bibernate.annotation.enums.FetchType;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
