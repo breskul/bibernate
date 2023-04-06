@@ -16,7 +16,8 @@ import javax.sql.DataSource;
 import java.util.*;
 import java.util.function.Supplier;
 
-import static com.breskul.bibernate.persistence.util.DaoUtils.*;
+import static com.breskul.bibernate.validate.EntityValidation.validateFetchEntity;
+import static com.breskul.bibernate.validate.EntityValidation.validatePersistEntity;
 
 /**
  * <h2>This is the implementation class of the EntityManager interface. This class provides an implementation of the basic operations that can be performed on entities.</h2>
@@ -61,7 +62,7 @@ public class EntityManagerImpl implements EntityManager {
      */
     public void persist(Object entity) {
         validateSession();
-        isValidEntity(entity, context.getCache());
+        validatePersistEntity(entity, context.getCache());
         this.jdbcDao.persist(entity);
     }
 
@@ -79,7 +80,7 @@ public class EntityManagerImpl implements EntityManager {
     @Override
     public void remove(Object entity) {
         validateSession();
-        this.jdbcDao.remove(entity, cache);
+        this.jdbcDao.remove(entity);
     }
 
     /**
@@ -92,6 +93,7 @@ public class EntityManagerImpl implements EntityManager {
     @Override
     public <T> T find(Class<T> entityClass, Object primaryKey) {
         validateSession();
+        validateFetchEntity(entityClass);
         String tableName = DaoUtils.getClassTableName(entityClass);
         Supplier<?> fetchSupplier = () -> jdbcDao.findByIdentifier(entityClass, tableName, primaryKey);
         EntityKey<?> entityKey = EntityKey.of(entityClass, primaryKey);
@@ -123,6 +125,9 @@ public class EntityManagerImpl implements EntityManager {
         return null;
     }
 
+    /**
+     * Flush run dirty checking and update all entities changed during transaction
+     */
     @Override
     public void flush() {
         jdbcDao.compareSnapshots();
@@ -168,6 +173,9 @@ public class EntityManagerImpl implements EntityManager {
 
     }
 
+    /**
+     * Clear snapshots and cache inside persistence context.
+     */
     @Override
     public void clear() {
         context.clear();
@@ -288,12 +296,19 @@ public class EntityManagerImpl implements EntityManager {
         return null;
     }
 
+    /**
+     * Clear snapshots and cache inside persistence context and close session.
+     */
     @Override
     public void close() {
         context.clear();
         this.isOpen = false;
     }
 
+    /**
+     * Return status for current session
+     * @return boolean
+     */
     @Override
     public boolean isOpen() {
         return isOpen;

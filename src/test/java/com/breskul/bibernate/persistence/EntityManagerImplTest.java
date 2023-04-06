@@ -2,6 +2,7 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.EntityManagerException;
+import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.exception.LazyInitializationException;
 import com.breskul.bibernate.exception.TransactionException;
@@ -21,6 +22,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,7 +34,7 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
     public static final String NOTE_BODY = "WOW, my brain is steaming!";
     public static final String TABLE_NOT_FOUND_MESSAGE = "entity is not marked with @Table annotation - mark entity with table annotation";
     public static final String NO_ENTITY_MESSAGE = "com.breskul.bibernate.persistence.test_model.PersonWithoutEntity is not a valid entity class - @Entity annotation should be present";
-    public static final String ID_AND_STRATEGY_MESSAGE = "detached entity is passed to persist - Make sure that you don't set id manually when using @GeneratedValue";
+    public static final String ID_AND_STRATEGY_MESSAGE = "Detached entity is passed to persist - Make sure that you don't set id manually when using @GeneratedValue";
 
     private EntityManager entityManager;
 
@@ -57,6 +59,14 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
             }
         });
         this.entityManager.close();
+    }
+
+    @Test
+    @DisplayName("Find entity with not default constructor")
+    public void getEntityWithNotDefaultConstructor() {
+        entityManager.getTransaction().begin();
+        assertThrows(InternalException.class, () -> entityManager.find(PersonWithoutDefaultConstructor.class, 1L));
+        entityManager.getTransaction().rollback();
     }
 
     @Test
@@ -643,28 +653,28 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         person.setId(50L);
         person.setBirthday(LocalDateTime.of(1962, Month.JULY, 3, 5, 0, 0).toLocalDate());
 
-        var firstNote = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
-        firstNote.setId(61L);
-        firstNote.setBody("Top Gun: Maverick. 1986");
-        firstNote.setPerson(person);
+        var node = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
+        node.setId(61L);
+        node.setBody("Top Gun: Maverick. 1986");
+        node.setPerson(person);
 
-        person.addNote(firstNote);
+        person.addNote(node);
 
         entityManager.getTransaction().begin();
 
         entityManager.persist(person);
 
         person.setFirstName("newFirstName");
-        firstNote.setBody("newBody");
+        node.setBody("newBody");
 
         entityManager.flush();
         entityManager.clear();
 
         var selectedPerson = entityManager.find(PersonWithoutGeneratedValueWithEagerFetch.class, person.getId());
-        var selectedNode = entityManager.find(NoteWithoutGeneratedValueWithEagerFetchFromPerson.class, firstNote.getId());
+        var selectedNode = entityManager.find(NoteWithoutGeneratedValueWithEagerFetchFromPerson.class, node.getId());
         entityManager.getTransaction().commit();
         assertEquals(selectedPerson.getFirstName(), person.getFirstName());
-        assertEquals(selectedNode.getBody(), firstNote.getBody());
+        assertEquals(selectedNode.getBody(), node.getBody());
     }
 
     @Test
@@ -676,26 +686,26 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         person.setId(50L);
         person.setBirthday(LocalDateTime.of(1962, Month.JULY, 3, 5, 0, 0).toLocalDate());
 
-        var firstNote = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
-        firstNote.setId(61L);
-        firstNote.setBody("Top Gun: Maverick. 1986");
-        firstNote.setPerson(person);
+        var node = new NoteWithoutGeneratedValueWithEagerFetchFromPerson();
+        node.setId(61L);
+        node.setBody("Top Gun: Maverick. 1986");
+        node.setPerson(person);
 
-        person.addNote(firstNote);
+        person.addNote(node);
 
         entityManager.getTransaction().begin();
         entityManager.persist(person);
         person.setFirstName("newFirstName");
-        firstNote.setBody("newBody");
+        node.setBody("newBody");
         entityManager.getTransaction().commit();
         entityManager.clear();
 
         entityManager.getTransaction().begin();
         var selectedPerson = entityManager.find(PersonWithoutGeneratedValueWithEagerFetch.class, person.getId());
-        var selectedNode = entityManager.find(NoteWithoutGeneratedValueWithEagerFetchFromPerson.class, firstNote.getId());
+        var selectedNode = entityManager.find(NoteWithoutGeneratedValueWithEagerFetchFromPerson.class, node.getId());
         entityManager.getTransaction().commit();
         assertEquals(selectedPerson.getFirstName(), person.getFirstName());
-        assertEquals(selectedNode.getBody(), firstNote.getBody());
+        assertEquals(selectedNode.getBody(), node.getBody());
     }
 
     @Test
@@ -707,12 +717,12 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         person.setId(41L);
         person.setBirthday(LocalDateTime.of(1963, Month.MARCH, 27, 10, 0, 0).toLocalDate());
 
-        NoteWithoutGeneratedValue firstNote = new NoteWithoutGeneratedValue();
-        firstNote.setId(53L);
-        firstNote.setBody("Pulp Fiction. 1994");
-        firstNote.setPerson(person);
+        NoteWithoutGeneratedValue node = new NoteWithoutGeneratedValue();
+        node.setId(53L);
+        node.setBody("Pulp Fiction. 1994");
+        node.setPerson(person);
 
-        person.addNote(firstNote);
+        person.addNote(node);
 
         entityManager.getTransaction().begin();
         entityManager.persist(person);
@@ -723,11 +733,40 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         entityManager.getTransaction().begin();
         var selectedPerson = entityManager.find(PersonWithoutGeneratedValue.class, person.getId());
         List<NoteWithoutGeneratedValue> list = selectedPerson.getNotes();
-        NoteWithoutGeneratedValue selectedNode = list.get(0);
+        NoteWithoutGeneratedValue lazyNode = list.get(0);
+        lazyNode.setBody("New test body");
+        entityManager.getTransaction().commit();
+
+        entityManager.getTransaction().begin();
+        var selectedNode = entityManager.find(NoteWithoutGeneratedValue.class, lazyNode.getId());
+        entityManager.getTransaction().commit();
+        assertEquals(lazyNode.getBody(), selectedNode.getBody());
+    }
+
+    @Test
+    @DisplayName("Test dirty checking for cascade type persist")
+    public void testDirtyCheckingForCascadePersist() {
+        PersonCascadePersist person = new PersonCascadePersist();
+        person.setFirstName("Quentin");
+        person.setLastName("Tarantino");
+        person.setBirthday(LocalDateTime.of(1963, Month.MARCH, 27, 10, 0, 0).toLocalDate());
+
+        entityManager.getTransaction().begin();
+
+        entityManager.persist(person);
+        NoteComplexCascadePersist node = new NoteComplexCascadePersist();
+        node.setBody("Pulp Fiction. 1994");
+        node.setPerson(person);
+        person.addNote(node);
 
         entityManager.getTransaction().commit();
 
-        assertEquals(person.getFirstName(), selectedPerson.getFirstName());
+        entityManager.clear();
+
+        entityManager.getTransaction().begin();
+        var selectedNode = entityManager.find(NoteComplexCascadePersist.class, node.getId());
+        entityManager.getTransaction().commit();
+        assertNotNull(selectedNode);
     }
 
 }

@@ -49,6 +49,7 @@ The list of all features with code examples you can find in this guide.
         - [Set up rollback mode](#set-up-rollback-mode)
         - [Get status rollback mode](#get-status-rollback-mode)
     - [First level cache](#first-level-cache)
+    - [Dirty checking](#dirty-checking)
     
 <!-- /TOC -->
 
@@ -248,26 +249,32 @@ Before use persistence operations need create EntityTransaction and open new tra
 and after operations need to make commit or rollback transaction
 
 ##### Create EntityTransaction
+> EntityTransaction singleton object and exist during the session
 >```java
 > EntityTransaction entityTransaction = entityManager.getTransaction();
 > ```
 
 ##### Begin new transaction
+> Before use operations with database you must open new transaction. 
+> This method will take new connection from connection pool
 >```java
 > entityTransaction.begin();
 > ```
 
 ##### Commit transaction
+> Commit method run dirty checking mechanism commit changes and return connection to connection pool
 >```java
 > entityTransaction.commit();
 > ```
 
 ##### Rollback transaction
+> Rollback discard all changes to database and clear persistence context
 >```java
 > entityTransaction.rollback();
 > ```
 
 ##### Check status transaction
+> If transaction is not active you must open new transaction for new operation in the another cases you will get exception.
 >```java
 > entityTransaction.isActive();
 > ```
@@ -279,31 +286,79 @@ and after operations need to make commit or rollback transaction
 > ```
 
 ##### Get status rollback mode
+> You can check current status for rollback mode. If mode is true then commit will to do rollback.
 > ```java
 > entityTransaction.getRollbackOnly();
 > ```
 
 ### First level cache
->Bibernate provide first level cache.
->Find, merge, persist, remove methods will update cache and help avoid additional calls to database.
+Bibernate provide persistence context with first level cache.
+Find, merge, persist, remove methods will update cache and help avoid additional calls to database.
+First level cache will give access for developer during session why you don't close `EntityManger` or call `clean()` method which
+remove all data from persistence context
+> Persist method will add new entity to cache
 > ```java
-> entityManager.persist(person); - will add value to cache
+> entityManager.persist(person);
 > ```
+> Find method will add selected entity to cache
 > ```java
-> entityManager.find(Person.class, 1L); - will add value to cache
+> entityManager.find(Person.class, 1L);
 > ```
+> Remove method will remove entity from cache and persistence context
 > ```java
-> entityManager.remove(person); - will remove value from cache
+> entityManager.remove(person);
 > ```
+> Merge method will add entity to persistence context and return new updated instance 
 > ```java
-> entityManager.merge(person); - will update cache value
+> entityManager.merge(person);
 > ```
+> Transaction rollback will clear persistence context and cache 
 >```java
-> entityTransaction.rollback(); will clear first level cache
+> entityTransaction.rollback();
 > ```
+> EntityManger close method clear persistence context and close session
 >```java
-> entityManager.close(); will clear first level cache
+> entityManager.close();
 > ```
+
+### Dirty checking
+During session Bibernate create snapshots for persisted and fetched entities.
+To run dirty checking need to call commit method or flush during transaction.
+After commit or flush dirty checking will compare cached objects with snapshots 
+and if they not equal then entities will update or insert to database.
+
+> Methods to run dirty checking
+>```java
+> 1. entityManager.flush();
+> 2. entityManager.getTransaction().commit();
+> ```
+> Example with update entity:
+>```java
+>  entityManager.getTransaction().begin();
+>
+>  var person = entityManager.find(Person.class, 1L);
+>  person.setFirstName("New first name")
+>
+>  entityManager.getTransaction().commit();
+> ```
+> Method `clear()` for EntityManager will clear persistence context and all changes before call will ignore.
+>```java
+> entityManager.clear();
+> ```
+> Dirty checking can insert new entities for collections mapped by @OneToMany annotation with cascade type `PERSIST` collections.
+>```java
+>  entityManager.getTransaction().begin();
+>
+>  var person = entityManager.find(Person.class, 1L);
+>  Note node = new Note();
+>  node.setBody("new body");
+>  node.setPerson(person);
+>  person.addNote(node);
+>
+>  entityManager.getTransaction().commit();
+> ```
+>After commit Node added to collection will insert to database.
+
 
 ## Our BRESKUL Team
 ***

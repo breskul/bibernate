@@ -276,6 +276,32 @@ class DaoUtilsTest {
         assertThrows(JdbcDaoException.class, () -> DaoUtils.isFieldAllOrRemoveCascade(field3));
     }
 
+    @Test
+    @DisplayName("test testGetSqlFieldValuesWithoutId method")
+    public void testGetSqlFieldValuesWithoutId() {
+        TestEntity testEntity = new TestEntity();
+        testEntity.setId(1L);
+        testEntity.setName("John");
+        testEntity.setAge(30);
+        testEntity.setEmail("john@example.com");
+
+        String result = DaoUtils.getSqlFieldValuesWithoutId(testEntity);
+        assertEquals("'John',30,'john@example.com'", result, "getSqlFieldValuesWithoutId test failed!");
+    }
+
+    @Test
+    @DisplayName("test testGetSqlFieldValues method")
+    public void testGetSqlFieldValue() {
+        TestEntity testEntity = new TestEntity();
+        testEntity.setId(1L);
+        testEntity.setName("John");
+        testEntity.setAge(30);
+        testEntity.setEmail("john@example.com");
+
+        String result = DaoUtils.getSqlFieldValues(testEntity);
+        assertEquals("1,'John',30,'john@example.com'", result, "getSqlFieldValuesWithoutId test failed!");
+    }
+
     // Helper method to retrieve a field from the Entity class
     private Field getFieldFromEntity(String fieldName) {
         try {
