@@ -3,10 +3,8 @@ package com.breskul.bibernate.persistence.util;
 import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.annotation.enums.CascadeType;
 import com.breskul.bibernate.annotation.enums.Strategy;
-import com.breskul.bibernate.exception.DaoUtilsException;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import com.breskul.bibernate.persistence.EntityKey;
 import jakarta.persistence.FetchType;
 
 import java.lang.annotation.Annotation;
@@ -21,8 +19,7 @@ import java.util.stream.Collectors;
  * <h3>{@link DaoUtils} provides reflection utility methods to work with Java Persistence API (JPA) entities. </h3>
  */
 public class DaoUtils {
-    private DaoUtils() {
-    }
+    private DaoUtils() {}
 
     /**
      * <p>This method returns a comma-separated list of the names of all the columns of the database table
@@ -32,13 +29,12 @@ public class DaoUtils {
      * @return {@link String} A comma-separated string containing the names of all the columns of the database table
      * corresponding to the given JPA entity that do not correspond to collection or primary key fields.
      */
-    public static String getSqlFieldNames(Object entity) {
+    public static String getSqlFieldNamesWithoutId(Object entity) {
         var entityClass = entity.getClass();
         return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> !isCollectionField(field) && !isIdField(field))
                 .map(DaoUtils::resolveColumnName)
                 .collect(Collectors.joining(","));
-
     }
 
     /**
@@ -71,7 +67,7 @@ public class DaoUtils {
      * @param field {@link Field} the field for which to return the database column name..
      * @return {@link String} the name of the database column corresponding to the given field.
      */
-    public static String resolveColumnName(Field field) {
+    private static String resolveColumnName(Field field) {
         if (Objects.isNull(field)) {
             throw new RuntimeException("You can not have null field");
         }
@@ -82,7 +78,6 @@ public class DaoUtils {
         return Optional.ofNullable(field.getAnnotation(Column.class))
                 .map(Column::name)
                 .orElse(field.getName());
-
     }
 
     /**
@@ -93,13 +88,28 @@ public class DaoUtils {
      * @return {@link String} A comma-separated string containing the values of all the columns of the database table
      * corresponding to the given JPA entity that do not correspond to collection or primary key fields.
      */
-    public static String getSqlFieldValues(Object entity) {
+    public static String getSqlFieldValuesWithoutId(Object entity) {
         var entityClass = entity.getClass();
         return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> !isCollectionField(field) && !isIdField(field))
                 .map(field -> getString(entity, field))
                 .collect(Collectors.joining(","));
+    }
 
+    /**
+     * <p>This method returns a comma-separated list of the values of all the columns of the database table
+     * corresponding to a given JPA entity that do not correspond to collection fields.</p>
+     *
+     * @param entity {@link Object} the JPA entity for which the list of column values should be returned.
+     * @return {@link String} A comma-separated string containing the values of all the columns of the database table
+     * corresponding to the given JPA entity that do not correspond to collection or primary key fields.
+     */
+    public static String getSqlFieldValues(Object entity) {
+        var entityClass = entity.getClass();
+        return Arrays.stream(entityClass.getDeclaredFields())
+                .filter(field -> !isCollectionField(field))
+                .map(field -> getString(entity, field))
+                .collect(Collectors.joining(","));
     }
 
     /**
@@ -159,7 +169,7 @@ public class DaoUtils {
      * @param field {@link Field} the field to check
      * @return {@link Boolean#TRUE} if the field is a parent entity field; {@link Boolean#FALSE} otherwise
      */
-    public static boolean isParentEntityField(Field field) {
+    private static boolean isParentEntityField(Field field) {
         if (Objects.isNull(field)) {
             return false;
         }
@@ -182,9 +192,8 @@ public class DaoUtils {
         } catch (IllegalAccessException e) {
             var cause = "entity does not have id field value";
             var solution = "make sure that entity has id field value";
-            throw new DaoUtilsException(cause, solution);
+            throw new InternalException(cause, solution);
         }
-
     }
 
     /**
@@ -200,7 +209,7 @@ public class DaoUtils {
         return Arrays.stream(entityClass.getDeclaredFields())
                 .filter(field -> field.isAnnotationPresent(Id.class))
                 .findAny()
-                .orElseThrow(() -> new DaoUtilsException(cause, solution));
+                .orElseThrow(() -> new InternalException(cause, solution));
     }
 
     /**
@@ -224,13 +233,15 @@ public class DaoUtils {
                 .filter(field -> field.isAnnotationPresent(OneToMany.class))
                 .toList();
     }
-    static CascadeType getCascadeType(Field field) {
+
+    public static CascadeType getCascadeType(Field field) {
         var cause = "OneToMany annotation does not have CascadeType";
         var solution = "annotate field with OneToMany annotation and put CascadeType on it";
         return Optional.ofNullable(field.getAnnotation(OneToMany.class))
                 .orElseThrow(() -> new JdbcDaoException(cause, solution))
                 .cascade();
     }
+
     static boolean isFieldAllOrRemoveCascade(Field field){
         var cascadeType = getCascadeType(field);
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
@@ -269,7 +280,6 @@ public class DaoUtils {
         return Optional.ofNullable(entityClass.getAnnotation(Table.class))
                 .map(Table::name)
                 .orElse(entityClass.getSimpleName());
-
     }
 
     /**
@@ -281,12 +291,12 @@ public class DaoUtils {
     public static String resolveFieldName(Field field) {
         if (field.isAnnotationPresent(Column.class)) {
             String fieldName = field.getAnnotation(Column.class).name();
-            if (fieldName != null && !fieldName.isEmpty()) {
+            if (!fieldName.isEmpty()) {
                 return fieldName;
             }
         } else if (field.isAnnotationPresent(JoinColumn.class)) {
             String fieldName = field.getAnnotation(JoinColumn.class).name();
-            if (fieldName != null && !fieldName.isEmpty()) {
+            if (!fieldName.isEmpty()) {
                 return fieldName;
             }
         }
@@ -377,40 +387,6 @@ public class DaoUtils {
         return Optional.ofNullable(entityClass.getAnnotation(Table.class))
                 .map(Table::name)
                 .orElse(entityClass.getSimpleName());
-
-    }
-
-    /**
-     * <p>Check if an object is a valid entity and has a valid identifier.</p>
-     *
-     * @param entity {@link Object} the entity object to check
-     * @param cache  {@link Map} the cache of entities to check against for detached entities
-     * @throws JdbcDaoException if the entity is not a valid entity, has more than one @Id annotation,
-     *                          has no @Id annotation, or is detached and has a manual id
-     *                          set with a @GeneratedValue strategy that is not AUTO
-     */
-    public static <T> void isValidEntity(T entity, Map<EntityKey<?>, Object> cache) {
-        var type = entity.getClass();
-        if (!type.isAnnotationPresent(Entity.class)) {
-            throw new JdbcDaoException("%s is not a valid entity class".formatted(type.getName()),
-                    "@Entity annotation should be present");
-        }
-        long idAnnotationCount = Arrays.stream(type.getDeclaredFields()).filter(field -> field.isAnnotationPresent(Id.class)).count();
-        if (idAnnotationCount > 1) {
-            throw new JdbcDaoException("There are more than one @Id annotation for %s".formatted(type.getName()),
-                    "Make sure that only one @Id annotation present");
-        } else if (idAnnotationCount == 0) {
-            throw new JdbcDaoException("There is no @Id annotation for %s".formatted(type.getName()),
-                    "Make sure that only one @Id annotation present");
-        }
-
-        Object id = getIdentifierValue(entity);
-        var strategy = getStrategy(entity);
-        if (!strategy.equals(Strategy.AUTO) && !Objects.isNull(id) && !cache.containsKey(EntityKey.of(entity.getClass(), id))) {
-            throw new JdbcDaoException("detached entity is passed to persist",
-                    "Make sure that you don't set id manually when using @GeneratedValue");
-        }
-
     }
 
     /**
@@ -455,7 +431,6 @@ public class DaoUtils {
     public static Class<?> getEntityCollectionElementType(Field field) {
         var parameterizedType = (ParameterizedType) field.getGenericType();
         var actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
-        var relatedEntityType = (Class<?>) actualTypeArgument;
-        return relatedEntityType;
+        return (Class<?>) actualTypeArgument;
     }
 }
