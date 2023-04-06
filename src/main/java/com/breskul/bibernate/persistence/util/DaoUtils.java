@@ -8,6 +8,8 @@ import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
 import com.breskul.bibernate.persistence.EntityKey;
 import jakarta.persistence.FetchType;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -18,11 +20,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * <h3>{@link DaoUtils} provides reflection utility methods to work with Java Persistence API (JPA) entities. </h3>
+ * {@link DaoUtils} provides reflection utility methods to work with Java Persistence API (JPA) entities.
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class DaoUtils {
-    private DaoUtils() {
-    }
 
     /**
      * <p>This method returns a comma-separated list of the names of all the columns of the database table
@@ -205,6 +206,7 @@ public class DaoUtils {
 
     /**
      * <p>returns a List of Field objects that have the {@link CascadeType#ALL} or {@link CascadeType#REMOVE} cascade type specified on their @OneToMany</p>
+     *
      * @param entityClass - {@link Class}
      * @return {@link List} of {@link Field} list of field that have cascade described above
      */
@@ -224,6 +226,7 @@ public class DaoUtils {
                 .filter(field -> field.isAnnotationPresent(OneToMany.class))
                 .toList();
     }
+
     static CascadeType getCascadeType(Field field) {
         var cause = "OneToMany annotation does not have CascadeType";
         var solution = "annotate field with OneToMany annotation and put CascadeType on it";
@@ -231,10 +234,12 @@ public class DaoUtils {
                 .orElseThrow(() -> new JdbcDaoException(cause, solution))
                 .cascade();
     }
-    static boolean isFieldAllOrRemoveCascade(Field field){
+
+    static boolean isFieldAllOrRemoveCascade(Field field) {
         var cascadeType = getCascadeType(field);
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
     }
+
     /**
      * <p>Gets the name of the identifier field of an entity class.</p>
      *
