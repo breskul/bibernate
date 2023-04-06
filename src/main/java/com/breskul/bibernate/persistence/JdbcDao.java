@@ -109,7 +109,7 @@ public class JdbcDao {
             var childes = currentNode.childes();
             List<Field> collectionFieldList = DaoUtils.getCollectionFields(currentEntity.getClass());
             for (Field collectionField : collectionFieldList) {
-                if (DaoUtils.isCollectionField(collectionField)) {
+                if (DaoUtils.isFieldAllOrPersistCascade(collectionField)) {
                     var childEntities = (Collection<?>) DaoUtils.getFieldValue(currentEntity, collectionField);
                     for (var childEntity : childEntities) {
                         var newNode = new EntityNode(childEntity, new ArrayList<>());

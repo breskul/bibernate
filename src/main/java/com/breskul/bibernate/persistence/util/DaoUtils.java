@@ -254,6 +254,11 @@ public class DaoUtils {
                 .cascade();
     }
 
+    public static boolean isFieldAllOrPersistCascade(Field field) {
+        var cascadeType = getCascadeType(field);
+        return cascadeType.equals(CascadeType.PERSIST) || cascadeType.equals(CascadeType.ALL);
+    }
+
     static boolean isFieldAllOrRemoveCascade(Field field) {
         var cascadeType = getCascadeType(field);
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
