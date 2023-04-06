@@ -769,4 +769,75 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         assertNotNull(selectedNode);
     }
 
+    @Test
+    @DisplayName("Test dirty checking for complex entities")
+    public void testDirtyCheckingForComplexEntity(){
+        PersonCascadePersist person = new PersonCascadePersist();
+        person.setFirstName(FIRST_NAME);
+        person.setLastName(LAST_NAME);
+        person.setBirthday(BIRTHDAY);
+
+        NoteComplexCascadePersist note1 = new NoteComplexCascadePersist();
+        note1.setBody(NOTE_BODY);
+
+        NoteComplexCascadePersist note2 = new NoteComplexCascadePersist();
+        note2.setBody(NOTE_BODY);
+
+        person.addNote(note1);
+        person.addNote(note2);
+
+        CompanyCascadePersist company1 = new CompanyCascadePersist();
+        company1.setName("company1");
+
+        CompanyCascadePersist company2 = new CompanyCascadePersist();
+        company2.setName("company2");
+
+        CompanyCascadePersist company3 = new CompanyCascadePersist();
+        company3.setName("company3");
+
+        CompanyCascadePersist company4 = new CompanyCascadePersist();
+        company4.setName("company4");
+
+        note1.addCompany(company1);
+        note1.addCompany(company2);
+
+        note2.addCompany(company3);
+        note2.addCompany(company4);
+
+        EntityTransaction entityTransaction = entityManager.getTransaction();
+
+        entityTransaction.begin();
+        entityManager.persist(person);
+        entityTransaction.commit();
+
+        entityTransaction.begin();
+        var managedPerson = entityManager.find(PersonCascadePersist.class, person.getId());
+        var notes = managedPerson.getNotes();
+        var managedNote1 = notes.get(0);
+        var managedNote2 = notes.get(1);
+        var listCompanies2 = managedNote2.getCompanies();
+
+        for (var company: listCompanies2){
+            managedNote1.addCompany(company);
+        }
+        entityTransaction.commit();
+
+        validateCompany2(company1.getId(), managedNote1.getId());
+        validateCompany2(company2.getId(), managedNote1.getId());
+        validateCompany2(company3.getId(), managedNote1.getId());
+        validateCompany2(company4.getId(), managedNote1.getId());
+    }
+
+    private void validateCompany2(Long id, Long parentId) {
+        try (Connection connection = dataSource.getConnection()) {
+            PreparedStatement preparedStatement = connection.prepareStatement(String.format("SELECT * FROM companies where id = %d and note_id = %d", id, parentId));
+            System.out.println("SQL:" + preparedStatement);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            assertTrue(resultSet.next());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }
