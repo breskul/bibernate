@@ -226,6 +226,9 @@ public class DemoApp {
 ##### Strategy-REMOVE
 > Indicates that the related entity should be removed along with the owning entity.
 
+##### Strategy-NONE
+> Indicates that the related entity not affected.
+
 
 
 ## Feature list
