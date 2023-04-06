@@ -14,7 +14,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -191,7 +194,6 @@ public class DaoUtils {
      * @param entity {@link Object} the entity object to get the identifier value from
      * @param <T>    the type of the entity object
      * @return the value of the identifier field in the entity object
-     * @throws IllegalAccessException if the identifier value cannot be retrieved
      */
     public static <T> Object getIdentifierValue(T entity) {
         Field identifierField = getIdentifierField(entity.getClass());
