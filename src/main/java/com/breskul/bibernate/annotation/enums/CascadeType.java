@@ -18,5 +18,9 @@ public enum CascadeType {
     /**
      * <p>Indicates that the related entity should be removed along with the owning entity.</p>
      */
-    REMOVE
+    REMOVE,
+    /**
+     * <p>Indicates that the related entity not affected.</p>
+     */
+    NONE
 }

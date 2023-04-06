@@ -1,4 +1,4 @@
-package com.breskul.bibernate.persistence.test_model.cascademerge.cascadepersist;
+package com.breskul.bibernate.persistence.test_model.cascadenone;
 
 import com.breskul.bibernate.annotation.*;
 import lombok.Data;
@@ -10,7 +10,7 @@ import static com.breskul.bibernate.annotation.enums.Strategy.SEQUENCE;
 @Entity
 @Data
 @Table(name = "notes")
-public class NoteComplexCascadeMerge {
+public class NoteComplexCascadeNone {
 
     @Id
     @GeneratedValue(strategy = SEQUENCE)
@@ -22,5 +22,5 @@ public class NoteComplexCascadeMerge {
 
     @ManyToOne
     @JoinColumn(name = "person_id")
-    private PersonCascadeMerge person;
+    private PersonCascadeNone person;
 }

@@ -1,4 +1,4 @@
-package com.breskul.bibernate.persistence.test_model.cascademerge.cascadepersist;
+package com.breskul.bibernate.persistence.test_model.cascadenone;
 
 import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.annotation.enums.CascadeType;
@@ -15,7 +15,7 @@ import java.util.List;
 @Data
 @ToString(exclude = "notes")
 @Table(name = "users")
-public class PersonCascadeMerge {
+public class PersonCascadeNone {
 
     @Id
     @GeneratedValue(strategy = Strategy.IDENTITY)
@@ -29,10 +29,10 @@ public class PersonCascadeMerge {
     @Column(name = "birthday")
     private LocalDate birthday;
 
-    @OneToMany(cascade = CascadeType.MERGE)
-    private List<NoteComplexCascadeMerge> notes = new ArrayList<>();
+    @OneToMany(cascade = CascadeType.NONE)
+    private List<NoteComplexCascadeNone> notes = new ArrayList<>();
 
-    public void addNote(NoteComplexCascadeMerge note) {
+    public void addNote(NoteComplexCascadeNone note) {
         note.setPerson(this);
         notes.add(note);
     }
