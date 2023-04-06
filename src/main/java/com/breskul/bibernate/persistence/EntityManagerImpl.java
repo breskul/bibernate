@@ -88,7 +88,7 @@ public class EntityManagerImpl implements EntityManager {
         T newEntity = findOrCreateEntity(entityClass, id);
         mergeEntities(newEntity, entity);
 
-        context.addToCache(entity, id);
+        context.addToCache(newEntity, id);
         return newEntity;
     }
 
@@ -115,7 +115,8 @@ public class EntityManagerImpl implements EntityManager {
                 if (newEntityFieldValue == null || !newEntityFieldValue.equals(oldEntityFieldValue)) {
                     DaoUtils.setValueToField(newEntity, oldEntityFieldValue, declaredField);
                 }
-            } else if (DaoUtils.isEntityCollectionField(declaredField)) {
+            } else if (DaoUtils.isEntityCollectionField(declaredField)
+                    && DaoUtils.isFieldAllOrMergeCascade(declaredField)) {
                 Collection<Object> newEntityFieldValue = (Collection<Object>)DaoUtils.getFieldValue(newEntity, declaredField);
                 Collection<?> oldEntityFieldValue = (Collection<?>)DaoUtils.getFieldValue(oldEntity, declaredField);
                 newEntityFieldValue.clear();
@@ -248,7 +249,9 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public boolean contains(Object entity) {
-        return false;
+        Object id = DaoUtils.getIdentifierValue(entity);
+        EntityKey<?> entityKey = EntityKey.of(entity.getClass(), id);
+        return context.getCache().containsKey(entityKey);
     }
 
     @Override

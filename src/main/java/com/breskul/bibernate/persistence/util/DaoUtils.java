@@ -248,6 +248,12 @@ public class DaoUtils {
         var cascadeType = getCascadeType(field);
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
     }
+
+    public static boolean isFieldAllOrMergeCascade(Field field){
+        var cascadeType = getCascadeType(field);
+        return cascadeType.equals(CascadeType.MERGE) || cascadeType.equals(CascadeType.ALL);
+    }
+
     /**
      * <p>Gets the name of the identifier field of an entity class.</p>
      *
