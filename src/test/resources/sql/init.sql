@@ -25,3 +25,12 @@ CREATE TABLE companies
         CONSTRAINT notes_FK references notes (id)
 );
 CREATE SEQUENCE companies_seq;
+
+CREATE TABLE profiles
+(
+    id         BIGINT                                 NOT NULL PRIMARY KEY,
+    profile    VARCHAR(255)                           NOT NULL,
+    person_id  BIGINT
+CONSTRAINT profiles_person_FK references users (id)
+);
+CREATE SEQUENCE profiles_seq;

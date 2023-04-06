@@ -1,10 +1,10 @@
 package com.breskul.bibernate.persistence.util;
 
-import com.breskul.bibernate.persistence.EntityKey;
+import com.breskul.bibernate.persistence.model.EntityKey;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -27,7 +27,9 @@ public class CacheUtils {
             return entityKey.entity().cast(cache.get(entityKey));
         } else {
             Object result = supplier.get();
-            cache.put(entityKey, result);
+            if (Objects.nonNull(result)) {
+                cache.put(entityKey, result);
+            }
             return entityKey.entity().cast(result);
         }
     }

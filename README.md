@@ -31,7 +31,11 @@ The list of all features with code examples you can find in this guide.
     - [@OneToOne](#onetoone)
     - [@OneToMany](#onetomany)
     - [@OneToOne](#onetoone)
-- [Cascade](#entity-manager)
+ - [Strategy](#strategy)
+   - [SEQUENCE](#sequence)
+   - [IDENTITY](#identity)
+   - [AUTO](#auto)
+- [Cascade](#cascade)
   - [ALL](#Strategy-ALL)
   - [PERSIST](#Strategy-PERSIST)
   - [MERGE](#Strategy-MERGE)
@@ -52,6 +56,7 @@ The list of all features with code examples you can find in this guide.
         - [Set up rollback mode](#set-up-rollback-mode)
         - [Get status rollback mode](#get-status-rollback-mode)
     - [First level cache](#first-level-cache)
+    - [Dirty checking](#dirty-checking)
     
 <!-- /TOC -->
 
@@ -156,21 +161,20 @@ public class DemoApp {
 ## Technologies
 ***
 
-  Requirements                |  Reason           
-------------------------------|------------------------------
- `Java 17 LTS`           	  |  Application              
- `Maven version 3.6.3+` 	  |  Builder 	                 
+| Requirements              | Reason      |
+|---------------------------|-------------|
+| `Java 17 LTS`           	 | Application |
+| `Maven version 3.6.3+` 	  | Builder 	   |
 
 #### Technology stack
 
-  Technology name             |  Version
-------------------------------|------------------------------
-  `JDK`        	              |  `17 LTS`                           
-  `HikariCP`        	      |  `5.0.1`                            
-  `lombok`        	          |  `1.18.24`                          
-  `log4j-core`        	      |  `2.7`
-  `JUnit`                     |  `5.9.2`
-
+| Technology name       | Version   |
+|-----------------------|-----------|
+| `JDK`        	        | `17 LTS`  |
+| `HikariCP`        	   | `5.0.1`   |
+| `lombok`        	     | `1.18.24` |
+| `log4j-core`        	 | `2.7`     |
+| `JUnit`               | `5.9.2`   |
 
 ## Entity Mapping
 ##### @OneToOne
@@ -191,6 +195,14 @@ public class DemoApp {
 > Has `optional` parameter which shows whether the association is optional.
 > If it set to false then a non-null relationship must always exist.
 > His parameter is `true` by default.
+
+## Strategy
+##### Sequence
+>  This strategy uses a database sequence to generate primary keys. The sequence is created in the database and is incremented each time a new row is inserted.
+##### Identity
+>  The database generates the primary key values as new rows are inserted, and the generated ID is assigned to the entity object.
+##### Auto
+>  User have to specify his own id for the newly inserted entity
 
 ## Cascade
 ##### Strategy-ALL
@@ -269,26 +281,32 @@ Before use persistence operations need create EntityTransaction and open new tra
 and after operations need to make commit or rollback transaction
 
 ##### Create EntityTransaction
+> EntityTransaction singleton object and exist during the session
 >```java
 > EntityTransaction entityTransaction = entityManager.getTransaction();
 > ```
 
 ##### Begin new transaction
+> Before use operations with database you must open new transaction. 
+> This method will take new connection from connection pool
 >```java
 > entityTransaction.begin();
 > ```
 
 ##### Commit transaction
+> Commit method run dirty checking mechanism commit changes and return connection to connection pool
 >```java
 > entityTransaction.commit();
 > ```
 
 ##### Rollback transaction
+> Rollback discard all changes to database and clear persistence context
 >```java
 > entityTransaction.rollback();
 > ```
 
 ##### Check status transaction
+> If transaction is not active you must open new transaction for new operation in the another cases you will get exception.
 >```java
 > entityTransaction.isActive();
 > ```
@@ -300,31 +318,174 @@ and after operations need to make commit or rollback transaction
 > ```
 
 ##### Get status rollback mode
+> You can check current status for rollback mode. If mode is true then commit will to do rollback.
 > ```java
 > entityTransaction.getRollbackOnly();
 > ```
 
 ### First level cache
->Bibernate provide first level cache.
->Find, merge, persist, remove methods will update cache and help avoid additional calls to database.
+Bibernate provide persistence context with first level cache.
+Find, merge, persist, remove methods will update cache and help avoid additional calls to database.
+First level cache will give access for developer during session why you don't close `EntityManger` or call `clean()` method which
+remove all data from persistence context
+> Persist method will add new entity to cache
 > ```java
-> entityManager.persist(person); - will add value to cache
+> entityManager.persist(person);
 > ```
+> Find method will add selected entity to cache
 > ```java
-> entityManager.find(Person.class, 1L); - will add value to cache
+> entityManager.find(Person.class, 1L);
 > ```
+> Remove method will remove entity from cache and persistence context
 > ```java
-> entityManager.remove(person); - will remove value from cache
+> entityManager.remove(person);
 > ```
+> Merge method will add entity to persistence context and return new updated instance 
 > ```java
-> entityManager.merge(person); - will update cache value
+> entityManager.merge(person);
 > ```
+> Transaction rollback will clear persistence context and cache 
 >```java
-> entityTransaction.rollback(); will clear first level cache
+> entityTransaction.rollback();
 > ```
+> EntityManger close method clear persistence context and close session
 >```java
-> entityManager.close(); will clear first level cache
+> entityManager.close();
 > ```
+### Entity Mapping
+To correctly create or map tables following annotations should be used
+> * @Entity: This annotation is used to specify that the class is an entity.
+> * @Table: This annotation is used to specify the database table that the entity maps to.
+> * @Id: This annotation is used to specify the primary key of the entity.
+> * @GeneratedValue: This annotation is used to specify how the primary key should be generated.
+> * @Column: This annotation is used to specify the mapping between a property and a column in the database table.
+>
+> Example of a single table
+> ```java
+> import lombok.Data;
+> import lombok.ToString;
+> 
+> @Entity
+> @Data
+> @ToString
+> @Table(name = "persons")
+> public class Person {
+>
+>	        @Id
+>	        @GeneratedValue(strategy = Strategy.IDENTITY)
+>	        private Long id;
+> 
+>	        @Column(name = "first_name")
+>	        private String firstName;
+> 
+>	        @Column(name = "last_name")
+>	        private String lastName;
+>
+>
+>	        @Column(name = "birthday")
+>	        private LocalDate birthday;
+>   }
+> ```
+> Example of table with one-to-many relation 
+> ```java
+> import lombok.Data;
+> import lombok.ToString;
+> 
+> @Entity
+> @Data
+> @ToString
+> @Table(name = "persons")
+> public class Person {
+>
+>           @Id
+>           @GeneratedValue(strategy = Strategy.IDENTITY)
+>           private Long id;
+> 
+>           @Column(name = "first_name")
+>           private String firstName;
+> 
+>           @Column(name = "last_name")
+>           private String lastName;
+>
+>
+>           @Column(name = "birthday")
+>           private LocalDate birthday;
+> 
+>           @OneToMany
+>           private List<NoteComplex> notes = new ArrayList<>();
+>
+>           public void addNote(NoteComplex note) {
+>               note.setPerson(this);
+>               notes.add(note);
+>           }
+>           public void removeNote(NoteComplex note) {
+>               note.setPerson(null);
+>               notes.remove(note);
+>           }
+>   }
+> 
+> @Entity
+> @Data
+> @Table(name = "notes")
+> @ToString
+> public class NoteComplex {
+>
+>    @Id
+>    @GeneratedValue(strategy = SEQUENCE)
+>    private Long id; 
+> 
+>    @Column(name = "body")
+>    private String body;
+>
+>    @Column(name = "created_at")
+>    private LocalDateTime createdAt = LocalDateTime.now();
+>
+>    @ManyToOne
+>    @JoinColumn(name = "person_id")
+>    private Person person;
+>
+> }
+> ```
+> 
+
+### Dirty checking
+During session Bibernate create snapshots for persisted and fetched entities.
+To run dirty checking need to call commit method or flush during transaction.
+After commit or flush dirty checking will compare cached objects with snapshots 
+and if they not equal then entities will update or insert to database.
+
+> Methods to run dirty checking
+>```java
+> 1. entityManager.flush();
+> 2. entityManager.getTransaction().commit();
+> ```
+> Example with update entity:
+>```java
+>  entityManager.getTransaction().begin();
+>
+>  var person = entityManager.find(Person.class, 1L);
+>  person.setFirstName("New first name")
+>
+>  entityManager.getTransaction().commit();
+> ```
+> Method `clear()` for EntityManager will clear persistence context and all changes before call will ignore.
+>```java
+> entityManager.clear();
+> ```
+> Dirty checking can insert new entities for collections mapped by @OneToMany annotation with cascade type `PERSIST` collections.
+>```java
+>  entityManager.getTransaction().begin();
+>
+>  var person = entityManager.find(Person.class, 1L);
+>  Note node = new Note();
+>  node.setBody("new body");
+>  node.setPerson(person);
+>  person.addNote(node);
+>
+>  entityManager.getTransaction().commit();
+> ```
+>After commit Node added to collection will insert to database.
+
 
 ## Our BRESKUL Team
 ***
