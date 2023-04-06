@@ -65,6 +65,15 @@ The list of all features with code examples you can find in this guide.
 ***
 
 ##### Apache Maven
+If you’re using Maven to build your project add the following to your pom.xml to use BIBERNATE:
+```$xslt
+<dependency>
+    <groupId>com.breskul.bibernate</groupId>
+    <artifactId>bibernate</artifactId>
+    <version>1.0-SNAPSHOT</version>
+</dependency>
+```
+
 ##### Maven build
 To build project using maven tool, please do the follow commands:
 ```$xslt
