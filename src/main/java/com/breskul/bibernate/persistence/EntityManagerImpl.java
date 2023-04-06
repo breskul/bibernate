@@ -13,9 +13,8 @@ import jakarta.persistence.criteria.CriteriaUpdate;
 import jakarta.persistence.metamodel.Metamodel;
 
 import javax.sql.DataSource;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.function.Supplier;
 
 import static com.breskul.bibernate.validate.EntityValidation.validateFetchEntity;
@@ -71,7 +70,68 @@ public class EntityManagerImpl implements EntityManager {
     @Override
     public <T> T merge(T entity) {
         validateSession();
-        return null;
+
+        if (entity == null) {
+            throw new EntityManagerException("Attempt to merge null entity", "Check entity");
+        }
+
+        Object id = DaoUtils.getIdentifierValue(entity);
+        if (context.getCache().containsKey(EntityKey.of(entity.getClass(), id))) {
+            return entity;
+        }
+
+        if (id == null) {
+            persist(entity);
+            detach(entity);
+        }
+
+        return mergeEntity(entity);
+    }
+
+    private <T> T mergeEntity(T entity) {
+        Object id = DaoUtils.getIdentifierValue(entity);
+        T newEntity = findOrCreateEntity((Class<T>) entity.getClass(), id);
+
+        Arrays.stream(newEntity.getClass().getDeclaredFields())
+                .forEach(field -> updateField(newEntity, entity, field));
+
+        context.addToCache(newEntity.getClass(), id);
+        return newEntity;
+    }
+
+    private <T> void updateField(T newEntity, T oldEntity, Field field) {
+        if (DaoUtils.isRegularField(field)) {
+            Object newEntityFieldValue = DaoUtils.getFieldValue(newEntity, field);
+            Object oldEntityFieldValue = DaoUtils.getFieldValue(oldEntity, field);
+            if (newEntityFieldValue == null || !newEntityFieldValue.equals(oldEntityFieldValue)) {
+                DaoUtils.setValueToField(newEntity, oldEntityFieldValue, field);
+            }
+        } else if (DaoUtils.isEntityCollectionField(field)
+                && DaoUtils.isFieldAllOrMergeCascade(field)) {
+            Collection<Object> newEntityFieldValue = (Collection<Object>) DaoUtils.getFieldValue(newEntity, field);
+            Collection<?> oldEntityFieldValue = (Collection<?>) DaoUtils.getFieldValue(oldEntity, field);
+            newEntityFieldValue.clear();
+            if (DaoUtils.isLoadedLazyList(oldEntityFieldValue)) {
+                for (Object element : oldEntityFieldValue) {
+                    newEntityFieldValue.add(merge(element));
+                }
+            }
+        } else if (DaoUtils.isEntityField(field)) {
+            Object oldEntityFieldValue = DaoUtils.getFieldValue(oldEntity, field);
+            Object newEntityFieldValue = merge(oldEntityFieldValue);
+            DaoUtils.setValueToField(newEntity, newEntityFieldValue, field);
+        }
+    }
+
+    private <T> T findOrCreateEntity(Class<T> entityClass, Object id) {
+        if (id == null) {
+            return DaoUtils.createEntityInstance(entityClass);
+        }
+        T entity = find(entityClass, id);
+        if (entity == null) {
+            return DaoUtils.createEntityInstance(entityClass);
+        }
+        return entity;
     }
 
     /**
@@ -185,12 +245,16 @@ public class EntityManagerImpl implements EntityManager {
 
     @Override
     public void detach(Object entity) {
-
+        Object id = DaoUtils.getIdentifierValue(entity);
+        context.removeFromCache(entity.getClass(), id);
+        context.removeSnapshot(entity.getClass(), id);
     }
 
     @Override
     public boolean contains(Object entity) {
-        return false;
+        Object id = DaoUtils.getIdentifierValue(entity);
+        EntityKey<?> entityKey = EntityKey.of(entity.getClass(), id);
+        return context.getCache().containsKey(entityKey);
     }
 
     @Override

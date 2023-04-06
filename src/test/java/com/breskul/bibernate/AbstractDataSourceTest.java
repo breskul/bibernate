@@ -1,7 +1,10 @@
 package com.breskul.bibernate;
 
 import com.breskul.bibernate.configuration.PersistenceProperties;
+import com.breskul.bibernate.persistence.EntityManagerImpl;
 import com.breskul.bibernate.repository.DataSourceFactory;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 
@@ -9,6 +12,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class AbstractDataSourceTest {
@@ -35,5 +39,30 @@ public abstract class AbstractDataSourceTest {
         }
     }
 
+    public void doInLocalEntityManager(Consumer<EntityManager> entityManagerConsumer) {
+        doInLocalEntityManagerReturning(em -> {
+            entityManagerConsumer.accept(em);
+            return null;
+        });
+    }
+
+    public <T> T doInLocalEntityManagerReturning(Function<EntityManager, T> entityManagerTFunction) {
+        EntityManager localEntityManager = new EntityManagerImpl(dataSource);
+        EntityTransaction transaction = localEntityManager.getTransaction();
+        transaction.begin();
+        T result;
+        try {
+
+            result = entityManagerTFunction.apply(localEntityManager);
+            transaction.commit();
+
+        } catch (Exception e) {
+            transaction.rollback();
+            throw new RuntimeException(e);
+        } finally {
+            localEntityManager.close();
+        }
+        return result;
+    }
 
 }

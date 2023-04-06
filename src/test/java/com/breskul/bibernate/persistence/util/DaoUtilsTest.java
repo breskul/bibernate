@@ -3,16 +3,20 @@ package com.breskul.bibernate.persistence.util;
 import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.annotation.enums.CascadeType;
 import com.breskul.bibernate.annotation.enums.Strategy;
+import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
+import com.breskul.bibernate.persistence.test_model.Person;
 import com.breskul.bibernate.persistence.util.test_model.*;
 import jakarta.persistence.Column;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -42,8 +46,8 @@ class DaoUtilsTest {
     }
 
     @Test
-    @DisplayName("Test setValueToField")
-    void testSetValueToField() {
+    @DisplayName("Test setValueToField with Id annotation")
+    void testSetValueToFieldWithIdAnnotation() {
         SetValueTest setValueTest = new SetValueTest();
         Long id = 1L;
         assertNull(setValueTest.getId());
@@ -59,6 +63,19 @@ class DaoUtilsTest {
         SetValueTest setValueTest = new SetValueTest();
         Long id = 1L;
         assertThrows(InternalException.class, () -> DaoUtils.setValueToField(setValueTest, id, Column.class));
+    }
+
+    @Test
+    @DisplayName("Test setValueToField with passed Field to set")
+    void testSetValueToFieldWithFieldPasses() throws NoSuchFieldException {
+        SetValueTest setValueTest = new SetValueTest();
+        Long id = 1L;
+        assertNull(setValueTest.getId());
+
+        Field field = setValueTest.getClass().getDeclaredField("id");
+        DaoUtils.setValueToField(setValueTest, id, field);
+
+        assertEquals(id, setValueTest.getId());
     }
 
     @Test
@@ -302,6 +319,38 @@ class DaoUtilsTest {
         assertEquals("1,'John',30,'john@example.com'", result, "getSqlFieldValuesWithoutId test failed!");
     }
 
+    @Test
+    @DisplayName("isLoadedList returns ture")
+    void testIsLoadedListTrue() throws Exception {
+        LazyList<String> lazyList = new LazyList<>(ArrayList::new);
+        lazyList.add("foo");
+        lazyList.add("bar");
+
+        boolean result = DaoUtils.isLoadedLazyList(lazyList);
+
+        Assertions.assertTrue(result);
+    }
+
+    @Test
+    @DisplayName("isLoadedList returns false")
+    void testIsLoadedListFalse() throws Exception {
+        LazyList<String> lazyList = new LazyList<>(ArrayList::new);
+
+        boolean result = DaoUtils.isLoadedLazyList(lazyList);
+
+        Assertions.assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("Create entity instance")
+    void testCreateEntityInstance() {
+        Class<Person> entityClass = Person.class;
+
+        Person person = DaoUtils.createEntityInstance(entityClass);
+
+        Assertions.assertNotNull(person);
+    }
+
     // Helper method to retrieve a field from the Entity class
     private Field getFieldFromEntity(String fieldName) {
         try {
@@ -326,7 +375,5 @@ class DaoUtilsTest {
     private static class RelatedEntity {}
 
     private static class OtherRelatedEntity {}
-
-
 
 }

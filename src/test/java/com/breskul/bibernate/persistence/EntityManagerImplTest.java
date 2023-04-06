@@ -943,4 +943,178 @@ public class EntityManagerImplTest extends AbstractDataSourceTest {
         }
     }
 
+    @Test
+    @DisplayName("Test merge method")
+    public void testMerge() {
+
+        Person person = new Person();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        entityManager.clear();
+
+        assertFalse(entityManager.contains(person));
+
+        person.setFirstName("Ron");
+        person.getNotes().get(0).setBody("My name is Ron");
+
+        entityManager.getTransaction().begin();
+        Person managedPerson = entityManager.merge(person);
+
+        assertEquals("Ron", managedPerson.getFirstName());
+        assertEquals("My name is Ron", managedPerson.getNotes().get(0).getBody());
+        assertNotSame(person, managedPerson);
+        assertTrue(entityManager.contains(managedPerson));
+        entityManager.getTransaction().commit();
+
+        entityManager.getTransaction().begin();
+        Person foundPerson = entityManager.find(Person.class, person.getId());
+        assertEquals("Ron", foundPerson.getFirstName());
+        assertEquals("My name is Ron", foundPerson.getNotes().get(0).getBody());
+        entityManager.getTransaction().commit();
+
+    }
+
+    @Test
+    @DisplayName("Test merge method with CascadeType.PERSIST")
+    public void testMergeCascadePersist() {
+
+        PersonCascadePersist person = new PersonCascadePersist();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplexCascadePersist note1 = new NoteComplexCascadePersist();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplexCascadePersist note2 = new NoteComplexCascadePersist();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        entityManager.clear();
+
+        assertFalse(entityManager.contains(person));
+
+        person.setFirstName("Ron");
+        person.getNotes().get(0).setBody("My name is Ron");
+
+        entityManager.getTransaction().begin();
+        PersonCascadePersist managedPerson = entityManager.merge(person);
+
+        assertEquals("Ron", managedPerson.getFirstName());
+        assertEquals("My name is Harry Potter", managedPerson.getNotes().get(0).getBody());
+        assertNotSame(person, managedPerson);
+        assertTrue(entityManager.contains(managedPerson));
+        entityManager.getTransaction().commit();
+
+        entityManager.getTransaction().begin();
+        PersonCascadePersist foundPerson = entityManager.find(PersonCascadePersist.class, person.getId());
+        assertEquals("Ron", foundPerson.getFirstName());
+        assertEquals("My name is Harry Potter", foundPerson.getNotes().get(0).getBody());
+        entityManager.getTransaction().commit();
+
+    }
+
+    @Test
+    @DisplayName("Merge Transient entity.")
+    public void testMergeTransientEntity() {
+        Person person = new Person();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        entityManager.getTransaction().begin();
+        Person managedPerson = entityManager.merge(person);
+        entityManager.getTransaction().commit();
+
+        assertEquals("Harry", managedPerson.getFirstName());
+        assertEquals("My name is Harry Potter", managedPerson.getNotes().get(0).getBody());
+        assertTrue(entityManager.contains(managedPerson));
+        assertNotSame(person, managedPerson);
+    }
+
+    @Test
+    @DisplayName("Test contains method.")
+    public void testContains() {
+        Person person = new Person();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        assertTrue(entityManager.contains(person));
+        assertTrue(entityManager.contains(note1));
+        assertTrue(entityManager.contains(note2));
+
+        entityManager.clear();
+
+        assertFalse(entityManager.contains(person));
+        assertFalse(entityManager.contains(note1));
+        assertFalse(entityManager.contains(note2));
+    }
+
+    @Test
+    @DisplayName("Test detach method.")
+    public void testDetach() {
+        Person person = new Person();
+        person.setFirstName("Harry");
+        person.setLastName("Potter");
+        person.setBirthday(LocalDate.of(1980, Month.JULY, 31));
+
+        NoteComplex note1 = new NoteComplex();
+        note1.setBody("My name is Harry Potter");
+        person.addNote(note1);
+
+        NoteComplex note2 = new NoteComplex();
+        note2.setBody("Do you know anything about the Camber of Secret?");
+        person.addNote(note2);
+
+        entityManager.getTransaction().begin();
+        entityManager.persist(person);
+        entityManager.getTransaction().commit();
+
+        entityManager.detach(person);
+
+        assertFalse(entityManager.contains(person));
+        assertTrue(entityManager.contains(note1));
+        assertTrue(entityManager.contains(note2));
+    }
+
 }

@@ -2,22 +2,21 @@ package com.breskul.bibernate.persistence.util;
 
 import com.breskul.bibernate.annotation.*;
 import com.breskul.bibernate.annotation.enums.CascadeType;
+import com.breskul.bibernate.annotation.enums.FetchType;
 import com.breskul.bibernate.annotation.enums.Strategy;
+import com.breskul.bibernate.collection.LazyList;
 import com.breskul.bibernate.exception.InternalException;
 import com.breskul.bibernate.exception.JdbcDaoException;
-import jakarta.persistence.FetchType;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -264,6 +263,11 @@ public class DaoUtils {
         return cascadeType.equals(CascadeType.REMOVE) || cascadeType.equals(CascadeType.ALL);
     }
 
+    public static boolean isFieldAllOrMergeCascade(Field field){
+        var cascadeType = getCascadeType(field);
+        return cascadeType.equals(CascadeType.MERGE) || cascadeType.equals(CascadeType.ALL);
+    }
+
     /**
      * <p>Gets the name of the identifier field of an entity class.</p>
      *
@@ -380,8 +384,19 @@ public class DaoUtils {
                             .formatted(annotationClass.getSimpleName(), entityType.getSimpleName());
                     return new InternalException(cause, solution);
                 });
-        field.setAccessible(true);
+        setValueToField(entity, value, field);
+    }
+
+    /**
+     * Set value to the entity field
+     * @param entity {@link Object} the entity object to set the field value for
+     * @param value {@link Object} the value to be set to the field
+     * @param field entity field
+     * @throws InternalException if the field cannot be accessed or set
+     */
+    public static void setValueToField(Object entity, Object value, Field field) {
         try {
+            field.setAccessible(true);
             field.set(entity, value);
         } catch (IllegalAccessException e) {
             var cause = "Can not set value to field";
@@ -450,5 +465,21 @@ public class DaoUtils {
         var parameterizedType = (ParameterizedType) field.getGenericType();
         var actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
         return (Class<?>) actualTypeArgument;
+    }
+
+    public static boolean isLoadedLazyList(Collection<?> collection) {
+        if (collection instanceof LazyList<?> lazyList){
+            return lazyList.isLoaded();
+        }
+        return true;
+    }
+
+    public static <T> T createEntityInstance(Class<T> entityClass) {
+        try {
+            return entityClass.getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new InternalException(String.format("Can't create entity instance of type '%s'", entityClass),
+                    "Entity class should have a default constructor");
+        }
     }
 }
