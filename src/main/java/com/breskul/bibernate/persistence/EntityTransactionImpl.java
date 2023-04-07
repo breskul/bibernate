@@ -25,6 +25,7 @@ public class EntityTransactionImpl implements EntityTransaction {
     public void begin() {
         if (isActive()) {
             closeConnection();
+            isActive = false;
             throw new TransactionException("Transaction have been already opened", "Can be open only one transaction");
         }
         try {
