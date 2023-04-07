@@ -69,6 +69,13 @@ public class PersistenceProperties {
     public String getProperty(String name) {
         return properties.getProperty(name);
     }
+
+    /**
+     * Clear PersistenceProperties
+     */
+    public static void clear() {
+        instance = null;
+    }
 }
 
 
