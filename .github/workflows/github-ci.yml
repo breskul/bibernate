@@ -16,16 +16,16 @@ jobs:
     
     strategy:
       matrix:
-        maven: [ '3.6.3', '3.8.4', '3.9.0' ]
+        maven: [ '3.6.3', '3.8.7', '3.9.0' ]
+
+    name: Maven ${{ matrix.maven }} sample
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-        
-    - name: Build with Maven
-      run: mvn -B package --file pom.xml
+
+      - name: Setup Maven Action
+        uses: s4u/setup-maven-action@< version >
+        with:
+          java-version: 17
+          maven-version: ${{ matrix.maven }}
+
+      - run:  mvn -B package --file pom.xml
