@@ -133,26 +133,26 @@ PersistenceProperties.initialize("test-configuration.properties");
 
 ```java
 import com.breskul.bibernate.configuration.PersistenceProperties;
-import com.breskul.bibernate.persistence.EntityManagerImpl;
-import com.breskul.bibernate.persistence.test_model.Person;
+import com.breskul.bibernate.persistence.EntityManager;
+import com.breskul.bibernate.persistence.EntityManagerFactory;
+import com.breskul.bibernate.persistence.EntityManagerFactoryImpl;
+import com.breskul.bibernate.persistence.EntityTransaction;
 import com.breskul.bibernate.repository.DataSourceFactory;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 
 import javax.sql.DataSource;
-import java.time.LocalDate;
-import java.time.Month;
 
 public class DemoApp {
     public static void main(String[] args) {
         PersistenceProperties.initialize();
         DataSourceFactory dataSourceFactory = DataSourceFactory.getInstance();
         DataSource dataSource = dataSourceFactory.getDataSource();
-        EntityManager entityManager = new EntityManagerImpl(dataSource);
+        EntityManagerFactory entityManagerFactory = new EntityManagerFactoryImpl(dataSource);
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
         EntityTransaction entityTransaction = entityManager.getTransaction();
-        
+
         entityTransaction.begin();
 
+        // Start persistence logic
         Person person = new Person();
         person.setFirstName("Keanu");
         person.setLastName("Reeves");
@@ -162,14 +162,15 @@ public class DemoApp {
         Person selectedPerson = entityManager.find(Person.class, 1L);
         System.out.println(selectedPerson);
         entityManager.remove(selectedPerson);
-        
+
+        // Finish persistence logic
         entityTransaction.commit();
-        
+
         entityManager.close();
+        entityManagerFactory.close();
     }
 }
 ```
-
 
 ## Technologies
 ***
@@ -190,11 +191,104 @@ public class DemoApp {
 | `JUnit`               | `5.9.2`   |
 
 ## Entity Mapping
+
+To correctly create or map tables following annotations should be used
+> * @Entity: This annotation is used to specify that the class is an entity.
+> * @Table: This annotation is used to specify the database table that the entity maps to.
+> * @Id: This annotation is used to specify the primary key of the entity.
+> * @GeneratedValue: This annotation is used to specify how the primary key should be generated.
+> * @Column: This annotation is used to specify the mapping between a property and a column in the database table.
+>
+> Example of a single table
+> ```java
+> import lombok.Data;
+> import lombok.ToString;
+> 
+> @Entity
+> @Data
+> @ToString
+> @Table(name = "persons")
+> public class Person {
+>
+>	        @Id
+>	        @GeneratedValue(strategy = Strategy.IDENTITY)
+>	        private Long id;
+> 
+>	        @Column(name = "first_name")
+>	        private String firstName;
+> 
+>	        @Column(name = "last_name")
+>	        private String lastName;
+>
+>
+>	        @Column(name = "birthday")
+>	        private LocalDate birthday;
+>   }
+> ```
+> Example of table with one-to-many relation
+> ```java
+> import lombok.Data;
+> import lombok.ToString;
+> 
+> @Entity
+> @Data
+> @ToString
+> @Table(name = "persons")
+> public class Person {
+>
+>           @Id
+>           @GeneratedValue(strategy = Strategy.IDENTITY)
+>           private Long id;
+> 
+>           @Column(name = "first_name")
+>           private String firstName;
+> 
+>           @Column(name = "last_name")
+>           private String lastName;
+>
+>
+>           @Column(name = "birthday")
+>           private LocalDate birthday;
+> 
+>           @OneToMany
+>           private List<NoteComplex> notes = new ArrayList<>();
+>
+>           public void addNote(NoteComplex note) {
+>               note.setPerson(this);
+>               notes.add(note);
+>           }
+>           public void removeNote(NoteComplex note) {
+>               note.setPerson(null);
+>               notes.remove(note);
+>           }
+>   }
+> 
+> @Entity
+> @Data
+> @Table(name = "notes")
+> @ToString
+> public class NoteComplex {
+>
+>    @Id
+>    @GeneratedValue(strategy = SEQUENCE)
+>    private Long id; 
+> 
+>    @Column(name = "body")
+>    private String body;
+>
+>    @Column(name = "created_at")
+>    private LocalDateTime createdAt = LocalDateTime.now();
+>
+>    @ManyToOne
+>    @JoinColumn(name = "person_id")
+>    private Person person;
+>
+> }
+> ```
+>
+
 ##### @OneToOne
 > Specifies a single-valued association to another entity class that has many-to-one multiplicity.
-> Has `optional` parameter which shows whether the association is optional. 
-> If it set to false then a non-null relationship must always exist.
-> His parameter is `true` by default.
 
 ##### @OneToMany
 > Specifies a many-valued association with one-to-many multiplicity
@@ -205,9 +299,6 @@ public class DemoApp {
 
 ##### @ManyToOne
 > Specifies a single-valued association to another entity class that has many-to-one multiplicity
-> Has `optional` parameter which shows whether the association is optional.
-> If it set to false then a non-null relationship must always exist.
-> His parameter is `true` by default.
 
 ## Strategy
 ##### Sequence
@@ -232,7 +323,6 @@ public class DemoApp {
 
 ##### Strategy-NONE
 > Indicates that the related entity not affected.
-
 
 
 ## Feature list
@@ -396,101 +486,6 @@ remove all data from persistence context
 >```java
 > entityManager.close();
 > ```
-### Entity Mapping
-To correctly create or map tables following annotations should be used
-> * @Entity: This annotation is used to specify that the class is an entity.
-> * @Table: This annotation is used to specify the database table that the entity maps to.
-> * @Id: This annotation is used to specify the primary key of the entity.
-> * @GeneratedValue: This annotation is used to specify how the primary key should be generated.
-> * @Column: This annotation is used to specify the mapping between a property and a column in the database table.
->
-> Example of a single table
-> ```java
-> import lombok.Data;
-> import lombok.ToString;
-> 
-> @Entity
-> @Data
-> @ToString
-> @Table(name = "persons")
-> public class Person {
->
->	        @Id
->	        @GeneratedValue(strategy = Strategy.IDENTITY)
->	        private Long id;
-> 
->	        @Column(name = "first_name")
->	        private String firstName;
-> 
->	        @Column(name = "last_name")
->	        private String lastName;
->
->
->	        @Column(name = "birthday")
->	        private LocalDate birthday;
->   }
-> ```
-> Example of table with one-to-many relation 
-> ```java
-> import lombok.Data;
-> import lombok.ToString;
-> 
-> @Entity
-> @Data
-> @ToString
-> @Table(name = "persons")
-> public class Person {
->
->           @Id
->           @GeneratedValue(strategy = Strategy.IDENTITY)
->           private Long id;
-> 
->           @Column(name = "first_name")
->           private String firstName;
-> 
->           @Column(name = "last_name")
->           private String lastName;
->
->
->           @Column(name = "birthday")
->           private LocalDate birthday;
-> 
->           @OneToMany
->           private List<NoteComplex> notes = new ArrayList<>();
->
->           public void addNote(NoteComplex note) {
->               note.setPerson(this);
->               notes.add(note);
->           }
->           public void removeNote(NoteComplex note) {
->               note.setPerson(null);
->               notes.remove(note);
->           }
->   }
-> 
-> @Entity
-> @Data
-> @Table(name = "notes")
-> @ToString
-> public class NoteComplex {
->
->    @Id
->    @GeneratedValue(strategy = SEQUENCE)
->    private Long id; 
-> 
->    @Column(name = "body")
->    private String body;
->
->    @Column(name = "created_at")
->    private LocalDateTime createdAt = LocalDateTime.now();
->
->    @ManyToOne
->    @JoinColumn(name = "person_id")
->    private Person person;
->
-> }
-> ```
-> 
 
 ### Dirty checking
 During session Bibernate create snapshots for persisted and fetched entities.
