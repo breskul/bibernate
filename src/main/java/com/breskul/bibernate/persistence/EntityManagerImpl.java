@@ -369,6 +369,9 @@ public class EntityManagerImpl implements EntityManager {
     public void close() {
         context.clear();
         this.isOpen = false;
+        if (entityTransaction != null && entityTransaction.isActive()){
+            entityTransaction.rollback();
+        }
     }
 
     /**
