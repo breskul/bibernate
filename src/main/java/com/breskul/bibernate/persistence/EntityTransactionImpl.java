@@ -1,19 +1,11 @@
 package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.exception.TransactionException;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-/**
- * Interface used to control transactions on resource-local entity
- * managers. The {@link EntityManager#getTransaction
- * EntityManager.getTransaction()} method returns the
- * <code>EntityTransaction</code> interface.
- */
 public class EntityTransactionImpl implements EntityTransaction {
 
     private final PersistenceContext context;
@@ -29,10 +21,6 @@ public class EntityTransactionImpl implements EntityTransaction {
         this.context = context;
     }
 
-    /**
-     * Start transaction.
-     * @throws TransactionException if transaction have been already opened or can not open transaction
-     **/
     @Override
     public void begin() {
         if (isActive()) {
@@ -48,10 +36,6 @@ public class EntityTransactionImpl implements EntityTransaction {
         }
     }
 
-    /**
-     * Commit transaction.
-     * @throws TransactionException if transaction have not been already opened or can not commit transaction
-     **/
     @Override
     public void commit() {
         if (!isActive()) {
@@ -73,10 +57,6 @@ public class EntityTransactionImpl implements EntityTransaction {
         this.isActive = false;
     }
 
-    /**
-     * Rollback transaction.
-     * @throws TransactionException if transaction have not been already opened or can not rollback transaction
-     **/
     @Override
     public void rollback() {
         if (!isActive()) {
@@ -95,10 +75,6 @@ public class EntityTransactionImpl implements EntityTransaction {
         this.isActive = false;
     }
 
-    /**
-     * Set rollback only mode.
-     * @throws TransactionException if transaction have not been already opened
-     **/
     @Override
     public void setRollbackOnly() {
         if (!isActive()) {
@@ -109,11 +85,6 @@ public class EntityTransactionImpl implements EntityTransaction {
         this.isRollbackOnly = true;
     }
 
-    /**
-     * Get rollback only mode.
-     * @throws TransactionException if transaction have not been already opened
-     * @return return boolean value for indication mode
-     **/
     @Override
     public boolean getRollbackOnly() {
         if (!isActive()) {
@@ -124,10 +95,6 @@ public class EntityTransactionImpl implements EntityTransaction {
         return isRollbackOnly;
     }
 
-    /**
-     * Check transaction status
-     * @return return boolean value for transaction status
-     **/
     @Override
     public boolean isActive() {
         return this.isActive;

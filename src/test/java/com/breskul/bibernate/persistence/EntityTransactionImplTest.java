@@ -3,8 +3,6 @@ package com.breskul.bibernate.persistence;
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.exception.TransactionException;
 import com.breskul.bibernate.persistence.test_model.PersonWithoutIdAndStrategy;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

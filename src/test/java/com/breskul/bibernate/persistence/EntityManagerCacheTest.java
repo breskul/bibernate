@@ -2,7 +2,6 @@ package com.breskul.bibernate.persistence;
 
 import com.breskul.bibernate.AbstractDataSourceTest;
 import com.breskul.bibernate.persistence.test_model.Person;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
