@@ -10,12 +10,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PersistencePropertiesTest {
     @AfterEach
-    void nullifyInstance() throws NoSuchFieldException, IllegalAccessException {
-        PersistenceProperties.initialize();
-        PersistenceProperties persistenceProperties = PersistenceProperties.getInstance();
-        Field instanceField = persistenceProperties.getClass().getDeclaredField("instance");
-        instanceField.setAccessible(true);
-        instanceField.set(persistenceProperties, null);
+    void nullifyInstance() {
+        PersistenceProperties.clear();
     }
 
     @Test
@@ -40,7 +36,6 @@ class PersistencePropertiesTest {
     @Test
     @DisplayName("Test load properties without initialization")
     void testLoadPropertiesWithoutInitialize() {
-
         assertThrows(InitializePersistencePropertiesException.class,
                 PersistenceProperties::getInstance);
     }
