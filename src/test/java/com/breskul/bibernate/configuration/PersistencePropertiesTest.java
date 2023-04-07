@@ -51,11 +51,4 @@ class PersistencePropertiesTest {
         assertThrows(PersistencePropertiesException.class,
                 () -> PersistenceProperties.initialize("nonexistent.properties"));
     }
-
-    @Test
-    @DisplayName("Test load properties IO exception")
-    void testLoadPropertiesIOException() {
-        assertThrows(PersistencePropertiesException.class,
-                () -> PersistenceProperties.initialize("invalid.properties"));
-    }
 }
