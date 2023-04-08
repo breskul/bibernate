@@ -25,6 +25,7 @@ public class PersistenceProperties {
     }
 
     private PersistenceProperties(String propertiesFile) {
+        System.out.println(propertiesFile);
         loadProperties(propertiesFile);
     }
 
@@ -40,6 +41,7 @@ public class PersistenceProperties {
      * @param propertiesFile custom properties file name
      */
     public static synchronized void initialize(String propertiesFile){
+        System.out.println("Init from Test: " + propertiesFile);
         System.out.println(instance);
         if (instance == null) {
             instance = new PersistenceProperties(propertiesFile);
