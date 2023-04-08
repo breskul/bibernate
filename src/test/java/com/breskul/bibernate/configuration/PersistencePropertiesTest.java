@@ -9,7 +9,7 @@ import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PersistencePropertiesTest {
-    @AfterEach
+    @BeforeEach
     void nullifyInstance() {
         PersistenceProperties.clear();
     }
